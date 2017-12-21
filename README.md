@@ -11,3 +11,15 @@ The private token is stored in a private Wiki page: https://git.nomics.world/cep
 ```sh
 PRIVATE_TOKEN=<hidden> ./configure-ci-for-provider.py -v <provider_slug>
 ```
+
+## Open URLs for provider
+
+```sh
+./open-urls-for-provider.py <provider_slug>
+```
+
+## Trigger download for a provider
+
+```sh
+PRIVATE_TOKEN=<hidden> ./trigger-download-for-provider.py <provider_slug>
+```
