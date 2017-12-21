@@ -176,6 +176,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('provider_slug', help='slug of the provider to configure')
     parser.add_argument('--debug-http', action='store_true', help='display http.client debug messages')
+    parser.add_argument('--importer-project-id', type=int, default=42, help='ID of the dbnomics-importer project')
     parser.add_argument('-v', '--verbose', action='store_true', help='display logging messages from debug level')
     args = parser.parse_args()
 
@@ -265,8 +266,7 @@ def main():
 
     # Create hook for indexation job.
 
-    importer_project_id = 42
-    triggers = get_triggers(importer_project_id)
+    triggers = get_triggers(args.importer_project_id)
     assert len(triggers) == 1, triggers  # dbnomics-importer does not have to be updated by this script.
     trigger = triggers[0]
     hooks = get_hooks(json_data_project['id'])
@@ -274,7 +274,7 @@ def main():
     hook = hooks[0] if hooks else None
     if hook is None:
         trigger_url = api_base_url + '/projects/{}/ref/master/trigger/pipeline?token={}&variables[PROVIDER_SLUG]={}'.format(
-            importer_project_id,
+            args.importer_project_id,
             trigger['token'],
             args.provider_slug,
         )
