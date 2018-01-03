@@ -27,6 +27,7 @@ See https://git.nomics.world/dbnomics-fetchers/documentation/wikis/Setup-CI-jobs
 """
 
 import argparse
+import logging
 import os
 import sys
 
@@ -35,6 +36,8 @@ import requests
 gitlab_base_url = 'https://git.nomics.world'
 api_base_url = gitlab_base_url + '/api/v4'
 fetchers_group_url = gitlab_base_url + '/dbnomics-fetchers'
+
+log = logging.getLogger(__name__)
 
 
 def request_api(method, path, headers={}, json=None, raise_for_status=True):
@@ -74,13 +77,28 @@ def main():
     global args
     parser = argparse.ArgumentParser()
     parser.add_argument('provider_slug', help='slug of the provider to configure')
+    parser.add_argument('-v', '--verbose', action='store_true', help='display logging messages from debug level')
     args = parser.parse_args()
+
+    logging.basicConfig(
+        format="%(levelname)s:%(name)s:%(asctime)s:%(message)s",
+        level=logging.DEBUG if args.verbose else logging.INFO,
+        stream=sys.stdout,
+    )
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
 
     fetcher_project = get_project("{}-fetcher".format(args.provider_slug))
 
     triggers = get_triggers(fetcher_project['id'])
-    assert len(triggers) <= 1, triggers  # Projects are designed to have only one trigger.
-    trigger = triggers[0] if triggers else None
+    nb_triggers = len(triggers)
+    if nb_triggers > 1:
+        log.error("Project should have one trigger at most, exit.")
+        return 1
+    elif nb_triggers == 0:
+        log.error("Project does not have any trigger, exit.")
+        return 1
+    else:
+        trigger = triggers[0]
 
     trigger_download_job(fetcher_project['id'], trigger['token'])
 
