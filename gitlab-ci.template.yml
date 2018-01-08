@@ -1,10 +1,8 @@
-image: debian:latest
+image: cbenz/dbnomics-gitlab-ci-docker:latest
 
 before_script:
   - export DEBIAN_FRONTEND=noninteractive
   - apt -qq --yes update
-  - apt -qq --yes install git
-  - apt -qq --yes install python3 python3-pip
 
   # Install fetcher dependencies.
   - '[ -f requirements.txt ] && pip3 install --requirement requirements.txt'
