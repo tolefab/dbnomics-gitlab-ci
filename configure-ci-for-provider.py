@@ -43,6 +43,7 @@ log = logging.getLogger(__name__)
 gitlab_base_url = 'https://git.nomics.world'
 api_base_url = gitlab_base_url + '/api/v4'
 default_importer_project_id = 42  # Project ID of repo https://git.nomics.world/dbnomics/dbnomics-importer/
+source_data_group_url = gitlab_base_url + '/dbnomics-source-data'
 
 
 def request_api(method, path, headers={}, json=None, raise_for_status=True):
@@ -298,9 +299,11 @@ def main():
         #     'can_push': True,
         # })
         # log.debug('deploy key created in source repository')
+        source_data_repo_url = '/'.join([source_data_group_url, args.provider_slug + '-source-data'])
+        source_data_repository_settings_url = source_data_repo_url + '/settings/repository'
         print(
             '\n\n\nWARNING! Please create deploy key manually:\n'
-            '1. Go to https://git.nomics.world/dbnomics-source-data/dummy-source-data/settings/repository\n',
+            '1. Go to {}\n'.format(source_data_repository_settings_url),
             '2. Copy-paste the public key below:\n',
             public_key, '\n',
             '3. Check "Write access allowed"'
