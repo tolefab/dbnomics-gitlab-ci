@@ -31,6 +31,7 @@ import os
 import sys
 
 import gitlab
+from gitlab.v4.objects import VISIBILITY_PUBLIC
 
 args = None
 log = logging.getLogger(__name__)
@@ -73,6 +74,8 @@ def main():
         source_data_project = gl.projects.create({
             'name': source_data_project_name,
             'namespace_id': source_data_namespace.id,
+            'description': "Source data as downloaded from provider {}".format(args.provider_slug),
+            'visibility': VISIBILITY_PUBLIC,
         })
         log.info('source data repository created: {}'.format(source_data_project))
 
@@ -89,6 +92,8 @@ def main():
         json_data_project = gl.projects.create({
             'name': json_data_project_name,
             'namespace_id': json_data_namespace.id,
+            'description': "JSON data as converted from source data of provider {}".format(args.provider_slug),
+            'visibility': VISIBILITY_PUBLIC,
         })
         log.info('JSON data repository created: {}'.format(json_data_project))
 
