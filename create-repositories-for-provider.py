@@ -36,14 +36,12 @@ from gitlab.v4.objects import VISIBILITY_PUBLIC
 args = None
 log = logging.getLogger(__name__)
 
-gitlab_base_url = 'https://git.nomics.world'
-api_base_url = gitlab_base_url + '/api/v4'
-
 
 def main():
     global args
     parser = argparse.ArgumentParser()
     parser.add_argument('provider_slug', help='slug of the provider to configure')
+    parser.add_argument('--gitlab-base-url', default='https://git.nomics.world', help='base URL of GitLab instance')
     parser.add_argument('--debug-http', action='store_true', help='display http.client debug messages')
     parser.add_argument('-v', '--verbose', action='store_true', help='display logging messages from debug level')
     args = parser.parse_args()
@@ -58,7 +56,10 @@ def main():
     if args.debug_http:
         http.client.HTTPConnection.debuglevel = 1
 
-    gl = gitlab.Gitlab(gitlab_base_url, private_token=os.environ.get('PRIVATE_TOKEN'), api_version=4)
+    if args.gitlab_base_url.endswith('/'):
+        args.gitlab_base_url = args.gitlab_base_url[:-1]
+
+    gl = gitlab.Gitlab(args.gitlab_base_url, private_token=os.environ.get('PRIVATE_TOKEN'), api_version=4)
     gl.auth()
 
     source_data_namespace_name = 'dbnomics-source-data'

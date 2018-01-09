@@ -35,109 +35,47 @@ import subprocess
 import sys
 import tempfile
 
+import gitlab
 import requests
 
 args = None
 log = logging.getLogger(__name__)
 
-gitlab_base_url = 'https://git.nomics.world'
-api_base_url = gitlab_base_url + '/api/v4'
+dbnomics_fetchers_namespace = "dbnomics-fetchers"
+dbnomics_source_data_namespace = "dbnomics-source-data"
+dbnomics_json_data_namespace = "dbnomics-json-data"
 default_importer_project_id = 42  # Project ID of repo https://git.nomics.world/dbnomics/dbnomics-importer/
-source_data_group_url = gitlab_base_url + '/dbnomics-source-data'
 
 
-def request_api(method, path, headers={}, json=None, raise_for_status=True):
-    assert method in {'GET', 'POST', 'PUT', 'DELETE'}, method
-    f = requests.get if method == 'GET' \
-        else requests.post if method == 'POST' \
-        else requests.put if method == 'PUT' \
-        else requests.delete
-    headers_ = {'PRIVATE-TOKEN': os.environ.get('PRIVATE_TOKEN')}
-    headers_.update(headers)
-    response = f(
-        api_base_url + path,
-        headers=headers_,
-        json=json,
-    )
-    if raise_for_status:
-        response.raise_for_status()
-    return response.json() \
-        if method != 'DELETE' \
-        else None
-
-
-# Deploy keys
-
-
-def create_deploy_key(project_id, data):
-    return request_api(
-        'POST',
-        '/projects/{}/deploy_keys'.format(project_id),
-        headers={'Content-Type': 'application/json'},
-        json=data,
-    )
-
-
-def delete_deploy_key(project_id, deploy_key_id):
-    return request_api('DELETE', '/projects/{}/deploy_keys/{}'.format(project_id, deploy_key_id))
-
-
-def delete_deploy_keys(project_id, title):
-    deploy_keys = get_deploy_keys(project_id)
-    for deploy_key in deploy_keys:
-        if deploy_key['title'] == title:
-            delete_deploy_key(project_id, deploy_key['id'])
-            log.debug('deleted deploy key of project ID {}: {}'.format(project_id, deploy_key))
-
-
-def enable_deploy_key(project_id, deploy_key_id):
-    return request_api('POST', '/projects/{}/deploy_keys/{}/enable'.format(project_id, deploy_key_id))
-
-
-def get_deploy_key(project_id, title):
-    deploy_keys = get_deploy_keys(project_id)
-    for deploy_key in deploy_keys:
-        if deploy_key['title'] == title:
-            return deploy_key
+def find(f, seq):
+    for item in seq:
+        if f(item):
+            return item
     return None
 
 
-def get_deploy_keys(project_id):
-    return request_api('GET', '/projects/{}/deploy_keys'.format(project_id))
+def generate_ssh_key():
+    with tempfile.NamedTemporaryFile(prefix='_' + args.provider_slug) as tmpfile:
+        ssh_key_file_path = tmpfile.name
+    print('Press "Enter" when passphrase is asked.')
+    subprocess.run(
+        [
+            'ssh-keygen', '-f', ssh_key_file_path, '-t', 'rsa', '-C',
+            args.provider_slug + '-fetcher@db.nomics.world', '-b', '4096',
+        ],
+        check=True,
+    )
+    with open('{}.pub'.format(ssh_key_file_path)) as ssh_key_file:
+        public_key = ssh_key_file.read()
+    with open(ssh_key_file_path) as ssh_key_file:
+        private_key = ssh_key_file.read()
+    return public_key, private_key
 
 
-# Hooks
+# Pipeline schedules are not ready yet: https://github.com/python-gitlab/python-gitlab/pull/398
 
-
-def create_hook(project_id, url):
-    return request_api('POST', '/projects/{}/hooks'.format(project_id), json={
-        'url': url,
-        'push_events': True,
-        'enable_ssl_verification': True,
-    })
-
-
-def delete_hook(project_id, hook_id):
-    return request_api('DELETE', '/projects/{}/hooks/{}'.format(project_id, hook_id))
-
-
-def delete_hooks(project_id, trigger_project_id):
-    hooks = get_hooks(project_id)
-    for hook in hooks:
-        if '/projects/{}'.format(trigger_project_id) in hook['url']:
-            delete_hook(project_id, hook['id'])
-            log.debug('deleted hook of project ID {}: {}'.format(project_id, hook))
-
-
-def get_hooks(project_id):
-    return request_api('GET', '/projects/{}/hooks'.format(project_id))
-
-
-# Pipeline schedules
-
-
-def create_pipeline_schedule(project_id, provider_slug):
-    return request_api('POST', '/projects/{}/pipeline_schedules'.format(project_id), json={
+def create_pipeline_schedule(api_base_url, project_id, provider_slug):
+    return requests.post(api_base_url + '/projects/{}/pipeline_schedules'.format(project_id), json={
         'active': True,
         'description': provider_slug,
         'ref': 'master',
@@ -145,57 +83,15 @@ def create_pipeline_schedule(project_id, provider_slug):
     })
 
 
-def create_pipeline_schedule_variable(project_id, pipeline_schedule_id):
-    return request_api('POST', '/projects/{}/pipeline_schedules/{}/variables'.format(project_id, pipeline_schedule_id), json={
+def create_pipeline_schedule_variable(api_base_url, project_id, pipeline_schedule_id):
+    return requests.post(api_base_url + '/projects/{}/pipeline_schedules/{}/variables'.format(project_id, pipeline_schedule_id), json={
         'key': 'JOB',
         'value': 'download',
     })
 
 
-def get_pipeline_schedules(project_id):
-    return request_api('GET', '/projects/{}/pipeline_schedules'.format(project_id))
-
-
-# Projects
-
-
-def get_project(name):
-    projects = request_api('GET', '/projects?search={}'.format(name))
-    assert len(projects) == 1, projects
-    return projects[0]
-
-
-# Triggers
-
-def create_trigger(project_id, description):
-    return request_api('POST', '/projects/{}/triggers'.format(project_id), json={'description': description})
-
-
-def delete_trigger(project_id, trigger_id):
-    return request_api('DELETE', '/projects/{}/triggers/{}'.format(project_id, trigger_id))
-
-
-def delete_triggers(project_id, description):
-    triggers = get_triggers(project_id)
-    for trigger in triggers:
-        if trigger['description'] == description:
-            delete_trigger(project_id, trigger['id'])
-            log.debug('deleted trigger of project ID {}: {}'.format(project_id, trigger))
-
-
-def get_triggers(project_id):
-    return request_api('GET', '/projects/{}/triggers'.format(project_id))
-
-
-# Variables
-
-
-def create_variable(project_id, key, value):
-    return request_api('POST', '/projects/{}/variables'.format(project_id), json={"key": key, "value": value})
-
-
-def delete_variable(project_id, key):
-    return request_api('DELETE', '/projects/{}/variables/{}'.format(project_id, key), raise_for_status=False)
+def get_pipeline_schedules(api_base_url, project_id):
+    return requests.get(api_base_url + '/projects/{}/pipeline_schedules'.format(project_id))
 
 
 def main():
@@ -203,6 +99,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('provider_slug', help='slug of the provider to configure')
     parser.add_argument('--debug-http', action='store_true', help='display http.client debug messages')
+    parser.add_argument('--gitlab-base-url', default='https://git.nomics.world', help='base URL of GitLab instance')
     parser.add_argument('--importer-project-id', type=int, default=default_importer_project_id,
                         help='ID of the dbnomics-importer project')
     parser.add_argument('--no-delete', action='store_true', help='disable deletion of existing items - for debugging')
@@ -220,80 +117,92 @@ def main():
     if args.debug_http:
         http.client.HTTPConnection.debuglevel = 1
 
+    if args.gitlab_base_url.endswith('/'):
+        args.gitlab_base_url = args.gitlab_base_url[:-1]
+
+    api_base_url = args.gitlab_base_url + '/api/v4'
+    source_data_group_url = args.gitlab_base_url + '/dbnomics-source-data'
+
+    gl = gitlab.Gitlab(args.gitlab_base_url, private_token=os.environ.get('PRIVATE_TOKEN'), api_version=4)
+    gl.auth()
+
     # Get projects IDs. Importer project ID is passed by a script argument, because it almost never changes.
-    fetcher_project = get_project("{}-fetcher".format(args.provider_slug))
-    log.debug('fetcher project ID: {}'.format(fetcher_project['id']))
-    source_data_project = get_project("{}-source-data".format(args.provider_slug))
-    log.debug('source data project ID: {}'.format(source_data_project['id']))
-    json_data_project = get_project("{}-json-data".format(args.provider_slug))
-    log.debug('JSON data project ID: {}'.format(json_data_project['id']))
+    fetcher_project = gl.projects.get("{}/{}-fetcher".format(dbnomics_fetchers_namespace, args.provider_slug))
+    log.debug('fetcher project: {}'.format(fetcher_project))
+    source_data_project = gl.projects.get(
+        "{}/{}-source-data".format(dbnomics_source_data_namespace, args.provider_slug))
+    log.debug('source data project: {}'.format(source_data_project))
+    json_data_project = gl.projects.get("{}/{}-json-data".format(dbnomics_json_data_namespace, args.provider_slug))
+    log.debug('JSON data project: {}'.format(json_data_project))
+    importer_project = gl.projects.get(args.importer_project_id)
+    log.debug('importer project: {}'.format(importer_project))
 
     # Get importer repo trigger.
-    importer_triggers = get_triggers(args.importer_project_id)
+    importer_triggers = importer_project.triggers.list()
     assert len(importer_triggers) == 1, importer_triggers
     importer_trigger = importer_triggers[0]
     log.debug('importer repo trigger fetched')
 
     if not args.no_delete:
         # Delete fetcher repo secret variable.
-        delete_variable(fetcher_project['id'], "SSH_PRIVATE_KEY")
-        log.debug('SSH_PRIVATE_KEY variable deleted')
+        variable = find(lambda variable: variable.key == "SSH_PRIVATE_KEY", fetcher_project.variables.list())
+        if variable is not None:
+            variable.delete()
+            log.debug('SSH_PRIVATE_KEY variable deleted')
 
         # Delete source data repo deploy keys, named as the provider slug (keep eventual other deploy keys).
-        delete_deploy_keys(source_data_project['id'], title=args.provider_slug)
-        log.debug('source repo deploy key deleted')
+        key = find(lambda key: key.title == args.provider_slug, source_data_project.keys.list())
+        if key is not None:
+            key.delete()
+            log.debug('source repo deploy key deleted')
 
         # Delete JSON data repo deploy keys, named as the provider slug (keep eventual other deploy keys).
-        delete_deploy_keys(json_data_project['id'], title=args.provider_slug)
-        log.debug('JSON repo deploy key deleted')
+        key = find(lambda key: key.title == args.provider_slug, json_data_project.keys.list())
+        if key is not None:
+            key.delete()
+            log.debug('JSON repo deploy key deleted')
 
         # Delete fetcher repo triggers, named as the provider slug (keep eventual other triggers).
-        delete_triggers(fetcher_project['id'], description=args.provider_slug)
-        log.debug('fetcher repo trigger deleted')
+        trigger = find(lambda trigger: trigger.description == args.provider_slug, fetcher_project.triggers.list())
+        if trigger is not None:
+            trigger.delete()
+            log.debug('fetcher repo trigger deleted')
 
         # Delete hooks of the source data repo, that trigger the converter job (keep eventual other hooks).
-        delete_hooks(source_data_project['id'], trigger_project_id=fetcher_project['id'])
-        log.debug('source repo hook deleted')
+        hook = find(lambda hook: '/projects/{}/'.format(fetcher_project.id) in hook.url,
+                    source_data_project.hooks.list())
+        if hook is not None:
+            hook.delete()
+            log.debug('source repo hook deleted')
 
         # Delete hooks of the JSON data repo, that trigger the Solr indexation job (keep eventual other hooks).
-        delete_hooks(json_data_project['id'], trigger_project_id=args.importer_project_id)
-        log.debug('JSON repo hook deleted')
+        hook = find(lambda hook: '/projects/{}/'.format(importer_project.id) in hook.url,
+                    json_data_project.hooks.list())
+        if hook is not None:
+            hook.delete()
+            log.debug('JSON repo hook deleted')
 
     if not args.no_create:
-        # Generate a deploy key.
-        with tempfile.NamedTemporaryFile(prefix='_' + args.provider_slug) as tmpfile:
-            ssh_key_file_path = tmpfile.name
-        print('Press "Enter" when passphrase is asked.')
-        subprocess.run(
-            [
-                'ssh-keygen', '-f', ssh_key_file_path, '-t', 'rsa', '-C',
-                args.provider_slug + '-fetcher@db.nomics.world', '-b', '4096',
-            ],
-            check=True,
-        )
-        with open('{}.pub'.format(ssh_key_file_path)) as ssh_key_file:
-            public_key = ssh_key_file.read()
-        with open(ssh_key_file_path) as ssh_key_file:
-            private_key = ssh_key_file.read()
+        public_key, private_key = generate_ssh_key()
 
         # Create trigger in the fetcher repo.
-        fetcher_trigger = create_trigger(fetcher_project['id'], description=args.provider_slug)
-        log.debug('trigger created')
+        fetcher_trigger = fetcher_project.triggers.create({"description": args.provider_slug})
+        log.debug('trigger created: {}'.format(fetcher_trigger))
 
         # Create a hook in the source data repo, to trigger the convert job.
         trigger_url = api_base_url + '/projects/{}/ref/master/trigger/pipeline?token={}&variables[JOB]=convert'.format(
-            fetcher_project['id'], fetcher_trigger['token'])
-        hook = create_hook(source_data_project['id'], url=trigger_url)
+            fetcher_project.id, fetcher_trigger.token)
+        source_data_project.hooks.create({"url": trigger_url})
         log.debug('created hook for convert job')
 
         # Create or update SSH_PRIVATE_KEY secret variable.
-        create_variable(fetcher_project['id'], 'SSH_PRIVATE_KEY', private_key)
+        fetcher_project.variables.create({"key": "SSH_PRIVATE_KEY", "value": private_key})
         log.debug('SSH_PRIVATE_KEY variable created')
 
         # Add public key to source data repo.
         # See bug https://gitlab.com/gitlab-org/gitlab-ce/issues/37458 – Deploy keys added via API do not trigger CI
         # Workaround: create deploy key manually.
-        # deploy_key = create_deploy_key(source_data_project['id'], {
+        # deploy_key = create_deploy_key(source_data_project.id, {
         #     'title': args.provider_slug,
         #     'key': public_key,
         #     'can_push': True,
@@ -309,28 +218,29 @@ def main():
             '3. Check "Write access allowed"'
         )
         input("Press Enter when done...")
-        deploy_key = get_deploy_key(source_data_project['id'], title=args.provider_slug)
-        assert deploy_key is not None
+        key = find(lambda key: key.title == args.provider_slug, source_data_project.keys.list())
+        assert key is not None
+        log.debug('deploy key created and enabled for source repository')
 
         # Enable public key in JSON data repo.
-        enable_deploy_key(json_data_project['id'], deploy_key['id'])
-        log.debug('deploy key enabled in JSON repository')
+        json_data_project.keys.enable(key.id)
+        log.debug('deploy key enabled for JSON repository')
 
         # Create a hook in the JSON data repo, to trigger the Solr indexation job.
         trigger_url = api_base_url + '/projects/{}/ref/master/trigger/pipeline?token={}&variables[PROVIDER_SLUG]={}'.format(
-            args.importer_project_id, importer_trigger['token'], args.provider_slug)
-        hook = create_hook(json_data_project['id'], url=trigger_url)
+            args.importer_project_id, importer_trigger.token, args.provider_slug)
+        hook = json_data_project.hooks.create({"url": trigger_url})
         log.debug('created hook for indexation job')
 
         # Create pipeline schedule in the fetcher repo.
         # "dummy" provider should not be scheduled.
         if args.provider_slug != 'dummy':
-            pipeline_schedules = get_pipeline_schedules(fetcher_project['id'])
+            pipeline_schedules = get_pipeline_schedules(api_base_url, fetcher_project.id)
             assert len(pipeline_schedules) <= 1, pipeline_schedules
             pipeline_schedule = pipeline_schedules[0] if pipeline_schedules else None
             if pipeline_schedule is None:
-                pipeline_schedule = create_pipeline_schedule(fetcher_project['id'], args.provider_slug)
-                create_pipeline_schedule_variable(fetcher_project['id'], pipeline_schedule['id'])
+                pipeline_schedule = create_pipeline_schedule(api_base_url, fetcher_project.id, args.provider_slug)
+                create_pipeline_schedule_variable(api_base_url, fetcher_project.id, pipeline_schedule.id)
                 log.debug('created pipeline schedule')
 
     return 0
