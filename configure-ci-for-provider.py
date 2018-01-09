@@ -323,13 +323,15 @@ def main():
         log.debug('created hook for indexation job')
 
         # Create pipeline schedule in the fetcher repo.
-        pipeline_schedules = get_pipeline_schedules(fetcher_project['id'])
-        assert len(pipeline_schedules) <= 1, pipeline_schedules
-        pipeline_schedule = pipeline_schedules[0] if pipeline_schedules else None
-        if pipeline_schedule is None:
-            pipeline_schedule = create_pipeline_schedule(fetcher_project['id'], args.provider_slug)
-            create_pipeline_schedule_variable(fetcher_project['id'], pipeline_schedule['id'])
-            log.debug('created pipeline schedule')
+        # "dummy" provider should not be scheduled.
+        if args.provider_slug != 'dummy':
+            pipeline_schedules = get_pipeline_schedules(fetcher_project['id'])
+            assert len(pipeline_schedules) <= 1, pipeline_schedules
+            pipeline_schedule = pipeline_schedules[0] if pipeline_schedules else None
+            if pipeline_schedule is None:
+                pipeline_schedule = create_pipeline_schedule(fetcher_project['id'], args.provider_slug)
+                create_pipeline_schedule_variable(fetcher_project['id'], pipeline_schedule['id'])
+                log.debug('created pipeline schedule')
 
     return 0
 
