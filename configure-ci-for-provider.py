@@ -83,10 +83,10 @@ def create_pipeline_schedule(api_base_url, project_id, provider_slug):
     })
 
 
-def create_pipeline_schedule_variable(api_base_url, project_id, pipeline_schedule_id):
+def create_pipeline_schedule_variable(api_base_url, project_id, pipeline_schedule_id, key, value):
     return requests.post(api_base_url + '/projects/{}/pipeline_schedules/{}/variables'.format(project_id, pipeline_schedule_id), json={
-        'key': 'JOB',
-        'value': 'download',
+        'key': key,
+        'value': value,
     })
 
 
@@ -244,7 +244,8 @@ def main():
             pipeline_schedule = pipeline_schedules[0] if pipeline_schedules else None
             if pipeline_schedule is None:
                 pipeline_schedule = create_pipeline_schedule(api_base_url, fetcher_project.id, args.provider_slug)
-                create_pipeline_schedule_variable(api_base_url, fetcher_project.id, pipeline_schedule.id)
+                create_pipeline_schedule_variable(api_base_url, fetcher_project.id, pipeline_schedule.id,
+                                                  key='JOB', value='download')
                 log.debug('created pipeline schedule')
 
     return 0
