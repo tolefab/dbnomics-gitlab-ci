@@ -74,12 +74,13 @@ def generate_ssh_key():
 
 # Pipeline schedules are not ready yet: https://github.com/python-gitlab/python-gitlab/pull/398
 
-def create_pipeline_schedule(api_base_url, project_id, provider_slug):
+def create_pipeline_schedule(api_base_url, project_id, provider_slug, schedule_time):
+    hour, minute = schedule_time
     return requests.post(api_base_url + '/projects/{}/pipeline_schedules'.format(project_id), json={
         'active': True,
         'description': provider_slug,
         'ref': 'master',
-        'cron': '0 1 * * *',
+        'cron': '{} {} * * *'.format(minute, hour),
     })
 
 
@@ -104,6 +105,7 @@ def main():
                         help='ID of the dbnomics-importer project')
     parser.add_argument('--no-delete', action='store_true', help='disable deletion of existing items - for debugging')
     parser.add_argument('--no-create', action='store_true', help='disable creation of items - for debugging')
+    parser.add_argument('--schedule-time', default='1:0', type=parse_time, help='time to run the scheduled pipeline')
     parser.add_argument('-v', '--verbose', action='store_true', help='display logging messages from debug level')
     args = parser.parse_args()
 
@@ -243,12 +245,59 @@ def main():
             assert len(pipeline_schedules) <= 1, pipeline_schedules
             pipeline_schedule = pipeline_schedules[0] if pipeline_schedules else None
             if pipeline_schedule is None:
-                pipeline_schedule = create_pipeline_schedule(api_base_url, fetcher_project.id, args.provider_slug)
+                pipeline_schedule = create_pipeline_schedule(api_base_url, fetcher_project.id, args.provider_slug,
+                                                             schedule_time=args.schedule_time)
                 create_pipeline_schedule_variable(api_base_url, fetcher_project.id, pipeline_schedule.id,
                                                   key='JOB', value='download')
                 log.debug('created pipeline schedule')
 
     return 0
+
+
+def parse_time(time):
+    """Transform a "hour:minute" string to a (hour, minute) tuple of integers.
+
+    >>> parse_time('')
+    Traceback (most recent call last):
+    ValueError: Invalid time ''
+    >>> parse_time(':')
+    Traceback (most recent call last):
+    ValueError: Invalid time ':'
+    >>> parse_time('1')
+    Traceback (most recent call last):
+    ValueError: Invalid time '1'
+    >>> parse_time('1:')
+    Traceback (most recent call last):
+    ValueError: Invalid time '1:'
+    >>> parse_time('1:1:1')
+    Traceback (most recent call last):
+    ValueError: Invalid time '1:1:1'
+    >>> parse_time('99:99')
+    Traceback (most recent call last):
+    ValueError: Invalid time '99:99'
+    >>> parse_time('-1:-1')
+    Traceback (most recent call last):
+    ValueError: Invalid time '-1:-1'
+    >>> parse_time('0:0')
+    (0, 0)
+    >>> parse_time('1:1')
+    (1, 1)
+    >>> parse_time('23:59')
+    (23, 59)
+    """
+    parts = time.split(':')
+    exc = ValueError('Invalid time {!r}'.format(time))
+    if len(parts) != 2:
+        raise exc
+    hour, minute = parts
+    try:
+        hour = int(hour)
+        minute = int(minute)
+    except ValueError:
+        raise exc
+    if hour < 0 or hour > 23 or minute < 0 or minute > 59:
+        raise exc
+    return (hour, minute)
 
 
 if __name__ == '__main__':
