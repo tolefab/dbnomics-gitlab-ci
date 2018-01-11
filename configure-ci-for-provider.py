@@ -76,23 +76,37 @@ def generate_ssh_key():
 
 def create_pipeline_schedule(api_base_url, project_id, provider_slug, schedule_time):
     hour, minute = schedule_time
-    return requests.post(api_base_url + '/projects/{}/pipeline_schedules'.format(project_id), json={
-        'active': True,
-        'description': provider_slug,
-        'ref': 'master',
-        'cron': '{} {} * * *'.format(minute, hour),
-    })
+    response = requests.post(
+        api_base_url + '/projects/{}/pipeline_schedules'.format(project_id),
+        headers={'PRIVATE-TOKEN': os.environ.get('PRIVATE_TOKEN')},
+        json={
+            'active': True,
+            'description': provider_slug,
+            'ref': 'master',
+            'cron': '{} {} * * *'.format(minute, hour),
+        },
+    )
+    response.raise_for_status()
+    return response.json()
 
 
 def create_pipeline_schedule_variable(api_base_url, project_id, pipeline_schedule_id, key, value):
-    return requests.post(api_base_url + '/projects/{}/pipeline_schedules/{}/variables'.format(project_id, pipeline_schedule_id), json={
-        'key': key,
-        'value': value,
-    })
+    response = requests.post(
+        api_base_url + '/projects/{}/pipeline_schedules/{}/variables'.format(project_id, pipeline_schedule_id),
+        headers={'PRIVATE-TOKEN': os.environ.get('PRIVATE_TOKEN')},
+        json={'key': key, 'value': value},
+    )
+    response.raise_for_status()
+    return response.json()
 
 
 def get_pipeline_schedules(api_base_url, project_id):
-    return requests.get(api_base_url + '/projects/{}/pipeline_schedules'.format(project_id))
+    response = requests.get(
+        api_base_url + '/projects/{}/pipeline_schedules'.format(project_id),
+        headers={'PRIVATE-TOKEN': os.environ.get('PRIVATE_TOKEN')},
+    )
+    response.raise_for_status()
+    return response.json()
 
 
 def main():
