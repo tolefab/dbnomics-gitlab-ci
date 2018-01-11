@@ -128,14 +128,13 @@ def main():
         level=logging.DEBUG if args.verbose else logging.INFO,
         stream=sys.stdout,
     )
+    logging.getLogger("urllib3").setLevel(logging.DEBUG if args.debug_http else logging.WARNING)
+    if args.debug_http:
+        http.client.HTTPConnection.debuglevel = 1
 
     if not os.environ.get('PRIVATE_TOKEN'):
         log.error("Please set PRIVATE_TOKEN environment variable before using this tool! (see README.md)")
         return 1
-
-    logging.getLogger("urllib3").setLevel(logging.DEBUG if args.debug_http else logging.WARNING)
-    if args.debug_http:
-        http.client.HTTPConnection.debuglevel = 1
 
     if args.gitlab_base_url.endswith('/'):
         args.gitlab_base_url = args.gitlab_base_url[:-1]
