@@ -87,6 +87,10 @@ def main():
     )
     logging.getLogger("urllib3").setLevel(logging.WARNING)
 
+    if not os.environ.get('PRIVATE_TOKEN'):
+        log.error("Please set PRIVATE_TOKEN environnement variable before using this tool ! (see README.md)")
+        return 1
+
     fetcher_project = get_project("{}-fetcher".format(args.provider_slug))
 
     triggers = get_triggers(fetcher_project['id'])

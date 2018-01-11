@@ -113,6 +113,10 @@ def main():
         stream=sys.stdout,
     )
 
+    if not os.environ.get('PRIVATE_TOKEN'):
+        log.error("Please set PRIVATE_TOKEN environnement variable before using this tool ! (see README.md)")
+        return 1
+
     logging.getLogger("urllib3").setLevel(logging.DEBUG if args.debug_http else logging.WARNING)
     if args.debug_http:
         http.client.HTTPConnection.debuglevel = 1
