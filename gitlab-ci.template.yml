@@ -1,14 +1,18 @@
 image: cbenz/dbnomics-gitlab-ci-docker:latest
 
+variables:
+  # Can be "download" or "convert"
+  JOB: convert
+  PROVIDER_SLUG: dummy
+
 before_script:
-  - export DEBIAN_FRONTEND=noninteractive
-  - apt -qq --yes update
+  # Display info about environment.
+  - date
+  - locale
+  - echo "Running job ${JOB} for provider ${PROVIDER_SLUG}"
 
   # Install fetcher dependencies.
   - '[ -f requirements.txt ] && pip3 install --requirement requirements.txt'
-
-  # Install ssh-agent if not already installed, it is required by Docker.
-  - 'which ssh-agent || apt -qq --yes install openssh-client'
 
   # Run ssh-agent (inside the build environment).
   - eval $(ssh-agent -s)
@@ -21,15 +25,8 @@ before_script:
   - ssh-keyscan -t rsa git.nomics.world >> ~/.ssh/known_hosts
 
   - git config --global push.default simple
-  - git config --global user.email "{provider_slug}-fetcher@db.nomics.world"
-  - git config --global user.name "{provider_slug} fetcher"
-
-  # Display current date to ease post-mortem debugging.
-  - date
-
-variables:
-  # Can be "download" or "convert"
-  JOB: convert
+  - git config --global user.email "${PROVIDER_SLUG}-fetcher@db.nomics.world"
+  - git config --global user.name "${PROVIDER_SLUG} fetcher"
 
 job:
   stage: build
@@ -41,26 +38,26 @@ job:
     - set -x
     - |
       if [ "${JOB}" == "download" ]; then
-        time git clone --quiet --depth=1 git@git.nomics.world:dbnomics-source-data/{provider_slug}-source-data.git
-        cd {provider_slug}-source-data
+        time git clone --quiet --depth=1 git@git.nomics.world:dbnomics-source-data/${PROVIDER_SLUG}-source-data.git
+        cd ${PROVIDER_SLUG}-source-data
         time find -not -path "./.git/*" -not -name ".git" -delete
         cd ..
-        time python3 download.py {provider_slug}-source-data
-        cd {provider_slug}-source-data
+        time python3 download.py ${PROVIDER_SLUG}-source-data
+        cd ${PROVIDER_SLUG}-source-data
         time git add -A
-        time git commit -m "New fetch" --quiet || echo "Nothing to commit"
-        time git push || echo "Nothing to push"
+        time git commit -m "New download" --quiet || true
+        time git push
       fi
     - |
       if [ "${JOB}" == "convert" ]; then
-        time git clone --quiet --depth=1 https://git.nomics.world/dbnomics-source-data/{provider_slug}-source-data.git
-        time git clone --quiet --depth=1 git@git.nomics.world:dbnomics-json-data/{provider_slug}-json-data.git
-        cd {provider_slug}-json-data
+        time git clone --quiet --depth=1 https://git.nomics.world/dbnomics-source-data/${PROVIDER_SLUG}-source-data.git
+        time git clone --quiet --depth=1 git@git.nomics.world:dbnomics-json-data/${PROVIDER_SLUG}-json-data.git
+        cd ${PROVIDER_SLUG}-json-data
         time find -not -path "./.git/*" -not -name ".git" -delete
         cd ..
-        time python3 convert.py {provider_slug}-source-data {provider_slug}-json-data
-        cd {provider_slug}-json-data
+        time python3 convert.py ${PROVIDER_SLUG}-source-data ${PROVIDER_SLUG}-json-data
+        cd ${PROVIDER_SLUG}-json-data
         time git add -A
-        time git commit -m "New conversion" --quiet || echo "Nothing to commit"
-        time git push || echo "Nothing to push"
+        time git commit -m "New conversion" --quiet || true
+        time git push
       fi
