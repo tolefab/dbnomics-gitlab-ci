@@ -21,7 +21,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-"""Trigger download job for a provider.
+"""Trigger job for a provider (download or convert).
 
 See https://git.nomics.world/dbnomics-fetchers/documentation/wikis/Setup-CI-jobs
 """
@@ -68,15 +68,17 @@ def get_triggers(project_id):
     return request_api('GET', '/projects/{}/triggers'.format(project_id))
 
 
-def trigger_download_job(project_id, token):
-    return request_api('POST', '/projects/{}/ref/master/trigger/pipeline?token={}&variables[JOB]=download'.format(
-        project_id, token))
+def trigger_job(project_id, ref, token, job_name):
+    return request_api('POST', '/projects/{}/ref/{}/trigger/pipeline?token={}&variables[JOB]={}'.format(
+        project_id, ref, token, job_name))
 
 
 def main():
     global args
     parser = argparse.ArgumentParser()
+    parser.add_argument('job_name', choices=['download', 'convert'], help='job name to trigger')
     parser.add_argument('provider_slug', help='slug of the provider to configure')
+    parser.add_argument('--ref', default='master', help='ref of fetcher repo (branch name) on which to start the job')
     parser.add_argument('-v', '--verbose', action='store_true', help='display logging messages from debug level')
     args = parser.parse_args()
 
@@ -104,7 +106,7 @@ def main():
     else:
         trigger = triggers[0]
 
-    trigger_download_job(fetcher_project['id'], trigger['token'])
+    trigger_job(fetcher_project['id'], args.ref, trigger['token'], args.job_name)
 
     fetcher_repo_url = '/'.join([fetchers_group_url, args.provider_slug + '-fetcher'])
     fetcher_jobs_url = fetcher_repo_url + '/-/jobs'
