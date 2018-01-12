@@ -21,5 +21,5 @@ PRIVATE_TOKEN=<hidden> ./configure-ci-for-provider.py -v <provider_slug>
 ## Trigger download for a provider
 
 ```sh
-PRIVATE_TOKEN=<hidden> ./trigger-download-for-provider.py <provider_slug>
+PRIVATE_TOKEN=<hidden> ./trigger-download-job-for-provider.py <provider_slug>
 ```
