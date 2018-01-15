@@ -3,7 +3,7 @@ image: dbnomics/dbnomics-gitlab-ci:latest
 variables:
   # Can be "download" or "convert"
   JOB: convert
-  PROVIDER_SLUG: dummy
+  PROVIDER_SLUG: SET_VALUE_HERE
 
 before_script:
   # Display info about environment.
