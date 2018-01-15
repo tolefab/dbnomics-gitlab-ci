@@ -31,46 +31,11 @@ import logging
 import os
 import sys
 
-import requests
+import gitlab
 
-gitlab_base_url = 'https://git.nomics.world'
-api_base_url = gitlab_base_url + '/api/v4'
-fetchers_group_url = gitlab_base_url + '/dbnomics-fetchers'
 
+dbnomics_fetchers_namespace = "dbnomics-fetchers"
 log = logging.getLogger(__name__)
-
-
-def request_api(method, path, headers={}, json=None, raise_for_status=True):
-    assert method in {'GET', 'POST', 'PUT', 'DELETE'}, method
-    f = requests.get if method == 'GET' \
-        else requests.post if method == 'POST' \
-        else requests.put if method == 'PUT' \
-        else requests.delete
-    headers_ = {'PRIVATE-TOKEN': os.environ.get('PRIVATE_TOKEN')}
-    headers_.update(headers)
-    response = f(
-        api_base_url + path,
-        headers=headers_,
-        json=json,
-    )
-    if raise_for_status:
-        response.raise_for_status()
-    return response.json()
-
-
-def get_project(name):
-    projects = request_api('GET', '/projects?search={}'.format(name))
-    assert len(projects) == 1, projects
-    return projects[0]
-
-
-def get_triggers(project_id):
-    return request_api('GET', '/projects/{}/triggers'.format(project_id))
-
-
-def trigger_job(project_id, ref, token, job_name):
-    return request_api('POST', '/projects/{}/ref/{}/trigger/pipeline?token={}&variables[JOB]={}'.format(
-        project_id, ref, token, job_name))
 
 
 def main():
@@ -78,6 +43,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('job_name', choices=['download', 'convert'], help='job name to trigger')
     parser.add_argument('provider_slug', help='slug of the provider to configure')
+    parser.add_argument('--gitlab-base-url', default='https://git.nomics.world', help='base URL of GitLab instance')
     parser.add_argument('--ref', default='master', help='ref of fetcher repo (branch name) on which to start the job')
     parser.add_argument('-v', '--verbose', action='store_true', help='display logging messages from debug level')
     args = parser.parse_args()
@@ -93,22 +59,32 @@ def main():
         log.error("Please set PRIVATE_TOKEN environment variable before using this tool! (see README.md)")
         return 1
 
-    fetcher_project = get_project("{}-fetcher".format(args.provider_slug))
+    if args.gitlab_base_url.endswith('/'):
+        args.gitlab_base_url = args.gitlab_base_url[:-1]
 
-    triggers = get_triggers(fetcher_project['id'])
-    nb_triggers = len(triggers)
-    if nb_triggers > 1:
-        log.error("Project should have one trigger at most, exit.")
-        return 1
-    elif nb_triggers == 0:
-        log.error("Project does not have any trigger, exit.")
-        return 1
-    else:
-        trigger = triggers[0]
+    api_base_url = args.gitlab_base_url + '/api/v4'
+    fetchers_group_url = args.gitlab_base_url + '/' + dbnomics_fetchers_namespace
 
-    trigger_job(fetcher_project['id'], args.ref, trigger['token'], args.job_name)
+    gl = gitlab.Gitlab(args.gitlab_base_url, private_token=os.environ.get('PRIVATE_TOKEN'), api_version=4)
+    gl.auth()
 
     fetcher_repo_url = '/'.join([fetchers_group_url, args.provider_slug + '-fetcher'])
+    fetcher_ci_settings_url = fetcher_repo_url + '/settings/ci_cd'
+
+    fetcher_project = gl.projects.get("{}/{}-fetcher".format(dbnomics_fetchers_namespace, args.provider_slug))
+    log.debug('fetcher project: {}'.format(fetcher_project))
+
+    triggers = fetcher_project.triggers.list()
+    if len(triggers) != 1:
+        log.error("Project should have one trigger, exit. See {}".format(fetcher_ci_settings_url))
+        return 1
+    trigger = triggers[0]
+    log.debug('fetcher repo trigger fetched')
+
+    pipeline_variables = {'JOB': args.job_name}
+    fetcher_project.trigger_pipeline(args.ref, trigger.token, pipeline_variables)
+    log.debug('pipeline triggered for ref {!r} with variables {!r}'.format(args.ref, pipeline_variables))
+
     fetcher_jobs_url = fetcher_repo_url + '/-/jobs'
     print('Check job: {}'.format(fetcher_jobs_url))
 
