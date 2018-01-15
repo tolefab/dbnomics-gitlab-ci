@@ -45,6 +45,7 @@ dbnomics_fetchers_namespace = "dbnomics-fetchers"
 dbnomics_source_data_namespace = "dbnomics-source-data"
 dbnomics_json_data_namespace = "dbnomics-json-data"
 default_importer_project_id = 42  # Project ID of repo https://git.nomics.world/dbnomics/dbnomics-importer/
+GENERATED_OBJECTS_TAG = 'CI jobs'
 
 
 def find(f, seq):
@@ -119,6 +120,7 @@ def main():
                         help='ID of the dbnomics-importer project')
     parser.add_argument('--no-delete', action='store_true', help='disable deletion of existing items - for debugging')
     parser.add_argument('--no-create', action='store_true', help='disable creation of items - for debugging')
+    parser.add_argument('--purge', action='store_true', help='delete all triggers, hooks and deploy keys')
     parser.add_argument('--schedule-time', default='1:0', type=parse_time, help='time to run the scheduled pipeline')
     parser.add_argument('-v', '--verbose', action='store_true', help='display logging messages from debug level')
     args = parser.parse_args()
@@ -140,7 +142,7 @@ def main():
         args.gitlab_base_url = args.gitlab_base_url[:-1]
 
     api_base_url = args.gitlab_base_url + '/api/v4'
-    source_data_group_url = args.gitlab_base_url + '/dbnomics-source-data'
+    source_data_group_url = args.gitlab_base_url + '/' + dbnomics_source_data_namespace
 
     gl = gitlab.Gitlab(args.gitlab_base_url, private_token=os.environ.get('PRIVATE_TOKEN'), api_version=4)
     gl.auth()
@@ -164,40 +166,56 @@ def main():
 
     if not args.no_delete:
         # Delete fetcher repo secret variable.
-        variable = find(lambda variable: variable.key == "SSH_PRIVATE_KEY", fetcher_project.variables.list())
+        variable = find(
+            lambda variable: variable.key == "SSH_PRIVATE_KEY",
+            fetcher_project.variables.list(),
+        )
         if variable is not None:
             variable.delete()
             log.debug('SSH_PRIVATE_KEY variable deleted')
 
         # Delete source data repo deploy keys, named as the provider slug (keep eventual other deploy keys).
-        key = find(lambda key: key.title == args.provider_slug, source_data_project.keys.list())
-        if key is not None:
+        keys = filter(
+            lambda key: args.purge or key.title == args.provider_slug + ' ' + GENERATED_OBJECTS_TAG,
+            source_data_project.keys.list(),
+        )
+        for key in keys:
             key.delete()
             log.debug('source repo deploy key deleted')
 
         # Delete JSON data repo deploy keys, named as the provider slug (keep eventual other deploy keys).
-        key = find(lambda key: key.title == args.provider_slug, json_data_project.keys.list())
-        if key is not None:
+        keys = filter(
+            lambda key: args.purge or key.title == args.provider_slug + ' ' + GENERATED_OBJECTS_TAG,
+            json_data_project.keys.list(),
+        )
+        for key in keys:
             key.delete()
             log.debug('JSON repo deploy key deleted')
 
         # Delete fetcher repo triggers, named as the provider slug (keep eventual other triggers).
-        trigger = find(lambda trigger: trigger.description == args.provider_slug, fetcher_project.triggers.list())
-        if trigger is not None:
+        triggers = filter(
+            lambda trigger: args.purge or trigger.description == GENERATED_OBJECTS_TAG,
+            fetcher_project.triggers.list(),
+        )
+        for trigger in triggers:
             trigger.delete()
             log.debug('fetcher repo trigger deleted')
 
         # Delete hooks of the source data repo, that trigger the converter job (keep eventual other hooks).
-        hook = find(lambda hook: '/projects/{}/'.format(fetcher_project.id) in hook.url,
-                    source_data_project.hooks.list())
-        if hook is not None:
+        hooks = filter(
+            lambda hook: args.purge or '/projects/{}/'.format(fetcher_project.id) in hook.url,
+            source_data_project.hooks.list(),
+        )
+        for hook in hooks:
             hook.delete()
             log.debug('source repo hook deleted')
 
         # Delete hooks of the JSON data repo, that trigger the Solr indexation job (keep eventual other hooks).
-        hook = find(lambda hook: '/projects/{}/'.format(importer_project.id) in hook.url,
-                    json_data_project.hooks.list())
-        if hook is not None:
+        hooks = filter(
+            lambda hook: args.purge or '/projects/{}/'.format(importer_project.id) in hook.url,
+            json_data_project.hooks.list(),
+        )
+        for hook in hooks:
             hook.delete()
             log.debug('JSON repo hook deleted')
 
@@ -205,7 +223,7 @@ def main():
         public_key, private_key = generate_ssh_key()
 
         # Create trigger in the fetcher repo.
-        fetcher_trigger = fetcher_project.triggers.create({"description": args.provider_slug})
+        fetcher_trigger = fetcher_project.triggers.create({"description": GENERATED_OBJECTS_TAG})
         log.debug('trigger created: {}'.format(fetcher_trigger))
 
         # Create a hook in the source data repo, to trigger the convert job.
@@ -231,13 +249,18 @@ def main():
         source_data_repository_settings_url = source_data_repo_url + '/settings/repository'
         print(
             '\n\n\nWARNING! Please create deploy key manually:\n'
-            '1. Go to {}\n'.format(source_data_repository_settings_url),
-            '2. Copy-paste the public key below:\n',
+            '1. Copy-paste the public key below:\n',
             public_key, '\n',
-            '3. Check "Write access allowed"'
+            '2. Go to {}\n'.format(source_data_repository_settings_url),
+            '3. Give the deploy key this name: {!r}\n'.format(args.provider_slug + ' ' + GENERATED_OBJECTS_TAG),
+            '4. Check "Write access allowed"\n',
+            '5. Validate',
         )
         input("Press Enter when done...")
-        key = find(lambda key: key.title == args.provider_slug, source_data_project.keys.list())
+        key = find(
+            lambda key: key.title == args.provider_slug + ' ' + GENERATED_OBJECTS_TAG,
+            source_data_project.keys.list(),
+        )
         assert key is not None
         log.debug('deploy key created and enabled for source repository')
 
