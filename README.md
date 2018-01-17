@@ -17,7 +17,7 @@ The private token is stored in a private Wiki page: https://git.nomics.world/cep
 - run `configure-ci-for-provider.py` and follow instructions
 
     ```sh
-    PRIVATE_TOKEN=<hidden> ./configure-ci-for-provider.py -v    <provider_slug>
+    PRIVATE_TOKEN=<hidden> ./configure-ci-for-provider.py --purge -v    <provider_slug>
     ```
 
 - to test averything is okay, trigger a download or a convert using `trigger-job-for-provider.py` (see below)
