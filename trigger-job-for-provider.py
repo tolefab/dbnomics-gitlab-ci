@@ -34,6 +34,7 @@ import sys
 import gitlab
 
 
+dbnomics_namespace = "dbnomics"
 dbnomics_fetchers_namespace = "dbnomics-fetchers"
 log = logging.getLogger(__name__)
 
@@ -41,7 +42,7 @@ log = logging.getLogger(__name__)
 def main():
     global args
     parser = argparse.ArgumentParser()
-    parser.add_argument('job_name', choices=['download', 'convert'], help='job name to trigger')
+    parser.add_argument('job_name', choices=['download', 'convert', 'index'], help='job name to trigger')
     parser.add_argument('provider_slug', help='slug of the provider to configure')
     parser.add_argument('--gitlab-base-url', default='https://git.nomics.world', help='base URL of GitLab instance')
     parser.add_argument('--ref', default='master', help='ref of fetcher repo (branch name) on which to start the job')
@@ -63,30 +64,54 @@ def main():
         args.gitlab_base_url = args.gitlab_base_url[:-1]
 
     api_base_url = args.gitlab_base_url + '/api/v4'
-    fetchers_group_url = args.gitlab_base_url + '/' + dbnomics_fetchers_namespace
 
     gl = gitlab.Gitlab(args.gitlab_base_url, private_token=os.environ.get('PRIVATE_TOKEN'), api_version=4)
     gl.auth()
 
-    fetcher_repo_url = '/'.join([fetchers_group_url, args.provider_slug + '-fetcher'])
-    fetcher_ci_settings_url = fetcher_repo_url + '/settings/ci_cd'
-
     fetcher_project = gl.projects.get("{}/{}-fetcher".format(dbnomics_fetchers_namespace, args.provider_slug))
     log.debug('fetcher project: {}'.format(fetcher_project))
 
-    triggers = fetcher_project.triggers.list()
-    if len(triggers) != 1:
-        log.error("Project should have one trigger, exit. See {}".format(fetcher_ci_settings_url))
-        return 1
-    trigger = triggers[0]
-    log.debug('fetcher repo trigger fetched')
+    if args.job_name in {"download", "convert"}:
+        fetchers_group_url = args.gitlab_base_url + '/' + dbnomics_fetchers_namespace
+        fetcher_repo_url = '/'.join([fetchers_group_url, args.provider_slug + '-fetcher'])
 
-    pipeline_variables = {'JOB': args.job_name}
-    fetcher_project.trigger_pipeline(args.ref, trigger.token, pipeline_variables)
-    log.debug('pipeline triggered for ref {!r} with variables {!r}'.format(args.ref, pipeline_variables))
+        triggers = fetcher_project.triggers.list()
+        if len(triggers) != 1:
+            fetcher_ci_settings_url = fetcher_repo_url + '/settings/ci_cd'
+            log.error("Project should have one trigger, exit. See {}".format(fetcher_ci_settings_url))
+            return 1
+        trigger = triggers[0]
+        log.debug('trigger of fetcher repo fetched')
 
-    fetcher_jobs_url = fetcher_repo_url + '/-/jobs'
-    print('Check job: {}'.format(fetcher_jobs_url))
+        pipeline_variables = {'JOB': args.job_name}
+        fetcher_project.trigger_pipeline(args.ref, trigger.token, pipeline_variables)
+        log.debug('pipeline triggered for ref {!r} with variables {!r}'.format(args.ref, pipeline_variables))
+
+        fetcher_jobs_url = fetcher_repo_url + '/-/jobs'
+        print('Check job: {}'.format(fetcher_jobs_url))
+    else:
+        assert args.job_name == "index", args.job_name
+
+        dbnomics_group_url = args.gitlab_base_url + '/' + dbnomics_namespace
+        importer_repo_url = '/'.join([dbnomics_group_url, 'dbnomics-importer'])
+
+        importer_project = gl.projects.get("{}/dbnomics-importer".format(dbnomics_namespace))
+        log.debug('importer project: {}'.format(importer_project))
+
+        triggers = importer_project.triggers.list()
+        if len(triggers) != 1:
+            importer_ci_settings_url = importer_repo_url + '/settings/ci_cd'
+            log.error("Project should have one trigger, exit. See {}".format(importer_ci_settings_url))
+            return 1
+        trigger = triggers[0]
+        log.debug('trigger of importer repo fetched')
+
+        pipeline_variables = {'PROVIDER_SLUG': args.provider_slug}
+        importer_project.trigger_pipeline("master", trigger.token, pipeline_variables)
+        log.debug('pipeline triggered for ref {!r} with variables {!r}'.format(args.ref, pipeline_variables))
+
+        importer_jobs_url = importer_repo_url + '/-/jobs'
+        print('Check job: {}'.format(importer_jobs_url))
 
     return 0
 
