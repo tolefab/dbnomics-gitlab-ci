@@ -13,7 +13,7 @@ The private token is stored in a private Wiki page: https://git.nomics.world/cep
 
 ## Configure CI for a provider
 
-- copy paste `gitlab-ci.template.yml` from here to `.gitlab-ci.yml` in provider (and set PROVIDER_SLUG)
+- copy paste `gitlab-ci.template.yml` from here to `.gitlab-ci.yml` in provider (and set PROVIDER_SLUG), commit and push
 - run `configure-ci-for-provider.py` and follow instructions
 
     ```sh
