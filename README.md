@@ -13,23 +13,23 @@ The private token is stored in a private Wiki page: https://git.nomics.world/cep
 
 ## Configure CI for a provider
 
-- copy paste `gitlab-ci.template.yml` from here to `.gitlab-ci.yml` in provider (and set PROVIDER_SLUG), commit and push
+- copy `gitlab-ci.template.yml` from here to `.gitlab-ci.yml` in the fetcher directory
+- set the PROVIDER_SLUG variable in the `variables` section of the YAML file
+- [optional] if the fetcher scripts are designed to read/write Git objects (blobs and trees) instead of files, add the `--bare` option to `git clone` lines in the `job.script` section of the YAML file
+- commit `.gitlab-ci.yml` and push
 - run `configure-ci-for-provider.py` and follow instructions
-
     ```sh
-    PRIVATE_TOKEN=<hidden> ./configure-ci-for-provider.py --purge -v    <provider_slug>
+    PRIVATE_TOKEN=<hidden> ./configure-ci-for-provider.py --purge -v <provider_slug>
     ```
+- to test averything is okay, trigger a job using `trigger-job-for-provider.py` (see below)
 
-- to test averything is okay, trigger a download or a convert using `trigger-job-for-provider.py` (see below)
-
-## Open URLs for provider
-
-```sh
-./open-urls-for-provider.py <provider_slug>
-```
-
-## Trigger download for a provider
+## Trigger a job for a provider
 
 ```sh
-PRIVATE_TOKEN=<hidden> ./trigger-job-for-provider.py <download or convert> <provider_slug>
+PRIVATE_TOKEN=<hidden> ./trigger-job-for-provider.py <download|convert|index> <provider_slug>
 ```
+
+## Other scripts
+
+- `create-repositories-for-provider.py` creates the `{provider_slug}-source-data` and `{provider_slug}-json-data` repositories to gain time when creating a new fetcher
+- `open-urls-for-provider.py` opens all URLs related to GitLab-CI management for a provider. It's a quick helper meant to help debugging the CI.
