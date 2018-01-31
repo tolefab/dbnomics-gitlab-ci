@@ -13,17 +13,20 @@ The private token is stored in a private Wiki page: https://git.nomics.world/cep
 
 ## Configure CI for a provider
 
-- copy `gitlab-ci.template.yml` from here to `.gitlab-ci.yml` in the fetcher directory
-- set the PROVIDER_SLUG variable in the `variables` section of the YAML file
-- [optional] if the fetcher scripts are designed to read/write Git objects (blobs and trees) instead of files, add the `--bare` option to `git clone` lines in the `job.script` section of the YAML file
-- commit `.gitlab-ci.yml` and push
-- run `configure-ci-for-provider.py` and follow instructions
+- Copy `gitlab-ci.template.yml` from here to `.gitlab-ci.yml` in the fetcher directory.
+- Set the PROVIDER_SLUG variable in the `variables` section of the YAML file.
+- [optional] If the fetcher scripts are designed to read/write Git objects (blobs and trees) instead of files, add the `--bare` option to `git clone` lines in the `job.script` section of the YAML file.
+- [optional] If the fetcher scripts are designed to create the commit, only keep the line executing the `download.py` or `convert.py` scripts, removing the `find ... -delete` and `git add/commit/push` lines in the `job.script` section of the YAML file.
+- Commit `.gitlab-ci.yml` and push.
+- Run `configure-ci-for-provider.py` and follow the instructions.
     ```sh
     PRIVATE_TOKEN=<hidden> ./configure-ci-for-provider.py --purge -v <provider_slug>
     ```
-- to test averything is okay, trigger a job using `trigger-job-for-provider.py` (see below)
+- To test averything is okay, trigger a job using `trigger-job-for-provider.py` (see below).
 
 ## Trigger a job for a provider
+
+This script runs a job in GitLab-CI using the configured webhooks. The triggered job can be followed by clicking on the link printed by the script.
 
 ```sh
 PRIVATE_TOKEN=<hidden> ./trigger-job-for-provider.py <download|convert|index> <provider_slug>
