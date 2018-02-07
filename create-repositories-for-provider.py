@@ -65,6 +65,7 @@ def main():
     gl = gitlab.Gitlab(args.gitlab_base_url, private_token=os.environ.get('PRIVATE_TOKEN'), api_version=4)
     gl.auth()
 
+    # Create source data repo
     source_data_namespace_name = 'dbnomics-source-data'
     source_data_namespaces = gl.namespaces.list(search=source_data_namespace_name)
     assert len(source_data_namespaces) == 1, source_data_namespaces
@@ -81,8 +82,11 @@ def main():
             'description': "Source data as downloaded from provider {}".format(args.provider_slug),
             'visibility': VISIBILITY_PUBLIC,
         })
-        log.info('source data repository created: {}'.format(source_data_project))
+        http_url_to_repo = source_data_project.http_url_to_repo
+        log.info('Repository created: {}'.format(http_url_to_repo))
+        log.debug('JSON info: {}'.format(source_data_project))
 
+    # Create json data repo
     json_data_namespace_name = 'dbnomics-json-data'
     json_data_namespaces = gl.namespaces.list(search=json_data_namespace_name)
     assert len(json_data_namespaces) == 1, json_data_namespaces
@@ -99,7 +103,9 @@ def main():
             'description': "JSON data as converted from source data of provider {}".format(args.provider_slug),
             'visibility': VISIBILITY_PUBLIC,
         })
-        log.info('JSON data repository created: {}'.format(json_data_project))
+        http_url_to_repo = json_data_project.http_url_to_repo
+        log.info('Repository created: {}'.format(http_url_to_repo))
+        log.debug('JSON info: {}'.format(json_data_project))
 
     return 0
 
