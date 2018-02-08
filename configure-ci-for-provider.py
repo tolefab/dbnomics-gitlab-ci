@@ -101,6 +101,14 @@ def create_pipeline_schedule_variable(api_base_url, project_id, pipeline_schedul
     return response.json()
 
 
+def delete_pipeline_schedule(api_base_url, project_id, pipeline_schedule_id):
+    response = requests.delete(
+        api_base_url + '/projects/{}/pipeline_schedules/{}'.format(project_id, pipeline_schedule_id),
+        headers={'PRIVATE-TOKEN': os.environ.get('PRIVATE_TOKEN')},
+    )
+    response.raise_for_status()
+
+
 def get_pipeline_schedules(api_base_url, project_id):
     response = requests.get(
         api_base_url + '/projects/{}/pipeline_schedules'.format(project_id),
@@ -219,6 +227,16 @@ def main():
             hook.delete()
             log.debug('JSON repo hook deleted')
 
+        # Delete pipeline schedule of the fetcher repo.
+        pipeline_schedules = filter(
+            lambda pipeline_schedule: args.purge or pipeline_schedule["description"] ==
+            args.provider_slug + ' ' + GENERATED_OBJECTS_TAG,
+            get_pipeline_schedules(api_base_url, fetcher_project.id),
+        )
+        for pipeline_schedule in pipeline_schedules:
+            delete_pipeline_schedule(api_base_url, fetcher_project.id, pipeline_schedule["id"])
+            log.debug('Fetcher repo pipeline schedule deleted')
+
     if not args.no_create:
         public_key, private_key = generate_ssh_key()
 
@@ -277,15 +295,11 @@ def main():
         # Create pipeline schedule in the fetcher repo.
         # "dummy" provider should not be scheduled.
         if args.provider_slug != 'dummy':
-            pipeline_schedules = get_pipeline_schedules(api_base_url, fetcher_project.id)
-            assert len(pipeline_schedules) <= 1, pipeline_schedules
-            pipeline_schedule = pipeline_schedules[0] if pipeline_schedules else None
-            if pipeline_schedule is None:
-                pipeline_schedule = create_pipeline_schedule(api_base_url, fetcher_project.id, args.provider_slug,
-                                                             schedule_time=args.schedule_time)
-                create_pipeline_schedule_variable(api_base_url, fetcher_project.id, pipeline_schedule.id,
-                                                  key='JOB', value='download')
-                log.debug('created pipeline schedule')
+            pipeline_schedule = create_pipeline_schedule(api_base_url, fetcher_project.id, args.provider_slug,
+                                                         schedule_time=args.schedule_time)
+            create_pipeline_schedule_variable(api_base_url, fetcher_project.id, pipeline_schedule["id"],
+                                              key='JOB', value='download')
+            log.debug('created pipeline schedule')
 
     return 0
 
