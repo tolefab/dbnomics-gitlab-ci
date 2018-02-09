@@ -65,6 +65,27 @@ def main():
     gl = gitlab.Gitlab(args.gitlab_base_url, private_token=os.environ.get('PRIVATE_TOKEN'), api_version=4)
     gl.auth()
 
+    # Create fetcher repo
+    fetchers_namespace_name = 'dbnomics-fetchers'
+    fetchers_namespaces = gl.namespaces.list(search=fetchers_namespace_name)
+    assert len(fetchers_namespaces) == 1, fetchers_namespaces
+    fetchers_namespace = fetchers_namespaces[0]
+
+    fetcher_project_name = '{}-fetcher'.format(args.provider_slug)
+    existing_fetcher_projects = gl.projects.list(search=fetcher_project_name)
+    if existing_fetcher_projects:
+        log.info('fetcher repositories exist: {}'.format(existing_fetcher_projects))
+    else:
+        fetcher_project = gl.projects.create({
+            'name': fetcher_project_name,
+            'namespace_id': fetchers_namespace.id,
+            'description': "DB.nomics fetcher for series from {} database.".format(args.provider_slug),
+            'visibility': VISIBILITY_PUBLIC,
+        })
+        http_url_to_repo = fetcher_project.http_url_to_repo
+        log.info('Repository created: {}'.format(http_url_to_repo))
+        log.debug('JSON info: {}'.format(fetcher_project))
+
     # Create source data repo
     source_data_namespace_name = 'dbnomics-source-data'
     source_data_namespaces = gl.namespaces.list(search=source_data_namespace_name)
