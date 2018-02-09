@@ -75,14 +75,14 @@ def generate_ssh_key():
 
 # Pipeline schedules are not ready yet: https://github.com/python-gitlab/python-gitlab/pull/398
 
-def create_pipeline_schedule(api_base_url, project_id, provider_slug, schedule_time):
+def create_pipeline_schedule(api_base_url, project_id, description, schedule_time):
     hour, minute = schedule_time
     response = requests.post(
         api_base_url + '/projects/{}/pipeline_schedules'.format(project_id),
         headers={'PRIVATE-TOKEN': os.environ.get('PRIVATE_TOKEN')},
         json={
             'active': True,
-            'description': provider_slug,
+            'description': description,
             'ref': 'master',
             'cron': '{} {} * * *'.format(minute, hour),
         },
@@ -295,7 +295,8 @@ def main():
         # Create pipeline schedule in the fetcher repo.
         # "dummy" provider should not be scheduled.
         if args.provider_slug != 'dummy':
-            pipeline_schedule = create_pipeline_schedule(api_base_url, fetcher_project.id, args.provider_slug,
+            pipeline_schedule = create_pipeline_schedule(api_base_url, fetcher_project.id,
+                                                         description=args.provider_slug + ' ' + GENERATED_OBJECTS_TAG,
                                                          schedule_time=args.schedule_time)
             create_pipeline_schedule_variable(api_base_url, fetcher_project.id, pipeline_schedule["id"],
                                               key='JOB', value='download')
