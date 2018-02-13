@@ -151,6 +151,7 @@ def main():
 
     api_base_url = args.gitlab_base_url + '/api/v4'
     source_data_group_url = args.gitlab_base_url + '/' + dbnomics_source_data_namespace
+    json_data_group_url = args.gitlab_base_url + '/' + dbnomics_json_data_namespace
 
     gl = gitlab.Gitlab(args.gitlab_base_url, private_token=os.environ.get('PRIVATE_TOKEN'), api_version=4)
     gl.auth()
@@ -287,6 +288,16 @@ def main():
         # Enable public key in JSON data repo.
         json_data_project.keys.enable(key.id)
         log.debug('deploy key enabled for JSON repository')
+
+        json_data_repo_url = '/'.join([json_data_group_url, args.provider_slug + '-json-data'])
+        json_data_repository_deploy_key_url = '{}/deploy_keys/{}/edit'.format(json_data_repo_url, key.id)
+        print(
+            '\n\n\nWARNING! Please add write access to the deploy key manually:\n'
+            '1. Go to {}\n'.format(json_data_repository_deploy_key_url),
+            '2. Check "Write access allowed"\n',
+            '3. Validate',
+        )
+        input("Press Enter when done...")
 
         # Create a hook in the JSON data repo, to trigger the Solr indexation job.
         trigger_url = api_base_url + '/projects/{}/ref/master/trigger/pipeline?token={}&variables[PROVIDER_SLUG]={}'.format(
