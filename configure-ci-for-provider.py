@@ -154,6 +154,8 @@ def main():
 
     gl = gitlab.Gitlab(args.gitlab_base_url, private_token=os.environ.get('PRIVATE_TOKEN'), api_version=4)
     gl.auth()
+    if args.debug_http:
+        gl.enable_debug()
 
     # Get projects IDs. Importer project ID is passed by a script argument, because it almost never changes.
     fetcher_project = gl.projects.get("{}/{}-fetcher".format(dbnomics_fetchers_namespace, args.provider_slug))
