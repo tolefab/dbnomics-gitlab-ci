@@ -1,3 +1,4 @@
+# .gitlab-ci.yml file
 image: dbnomics/dbnomics-gitlab-ci:latest
 
 variables:
