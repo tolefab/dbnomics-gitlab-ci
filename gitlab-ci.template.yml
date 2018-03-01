@@ -1,4 +1,4 @@
-# .gitlab-ci.yml file
+# Copy this file in a fetcher repository and name it `.gitlab-ci.yml`, and replace SET_VALUE_HERE below.
 image: dbnomics/dbnomics-gitlab-ci:latest
 
 variables:
