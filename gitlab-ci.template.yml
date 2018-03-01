@@ -31,8 +31,8 @@ before_script:
 
 job:
   stage: build
-  only:
-    - triggers
+  except:
+    - pushes
   tags:
     - docker
   script:
