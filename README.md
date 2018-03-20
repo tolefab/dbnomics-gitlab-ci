@@ -35,3 +35,25 @@ PRIVATE_TOKEN=<hidden> ./trigger-job-for-provider.py <download|convert|index> <p
 
 - `create-repositories-for-provider.py` creates the `{provider_slug}-source-data` and `{provider_slug}-json-data` repositories to gain time when creating a new fetcher
 - `open-urls-for-provider.py` opens all URLs related to GitLab-CI management for a provider. It's a quick helper meant to help debugging the CI.
+
+## What to do after changing a provider code
+
+Example: rename `bank-of-england` to `BOE`.
+
+- Rename the fetcher, source data and JSON data repositories in advanced settings
+- Rename your local directories and update Git remote URLs with:
+  ```
+  git remote set-url origin git@git.nomics.world:dbnomics-fetchers/boe-fetcher.git
+  ```
+  (this time by ssh)
+- Remove all documents from Solr index with `./delete_provider.sh bank-of-england`
+- In the fetcher repo:
+  - change the code in `convert.py` in `PROVIDER_JSON` constant (use `BOE`)
+  - change the `PROVIDER_SLUG` variable in `.gitlab-ci.yml` (use `boe`)
+- On the server `dolos`, rename the JSON data directory under `/home/gitlab-runner/json-data` and update thew Git remote URL:
+  ```
+  git remote set-url origin https://git.nomics.world/dbnomics-json-data/boe-json-data.git
+  ```
+  (this time by `https`)
+- Update the `PROVIDER_SLUG` job variable in the [webhook](https://git.nomics.world/dbnomics-json-data/boe-json-data/settings/integrations)
+- Trigger a convert job: `./trigger-job-for-provider.py convert boe`
