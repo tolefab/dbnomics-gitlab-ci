@@ -16,6 +16,7 @@ The private token is stored in a private Wiki page: https://git.nomics.world/cep
 - Copy `gitlab-ci.template.yml` from here to `.gitlab-ci.yml` in the fetcher directory.
 - Set the PROVIDER_SLUG variable in the `variables` section of the YAML file.
 - [optional] If the fetcher scripts are designed to read/write Git objects (blobs and trees) instead of files and create the commit, for example because they implement incremental mode, adapt the CI in consequence. Look at [IMF CI config file](https://git.nomics.world/dbnomics-fetchers/imf-fetcher/blob/master/.gitlab-ci.yml) for an example.
+- Check that you keep lines of `.gitlab-ci.yml` specific to this fetcher (for example `apt install wget`).
 - Commit `.gitlab-ci.yml` and push.
 - Run `configure-ci-for-provider.py` and follow the instructions.
     ```sh
