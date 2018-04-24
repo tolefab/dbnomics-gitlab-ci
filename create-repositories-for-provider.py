@@ -43,7 +43,8 @@ log = logging.getLogger(__name__)
 
 def main():
     global args
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description=__doc__,
+                            formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('provider_slug', help='slug of the provider to configure')
     parser.add_argument('--gitlab-base-url', default='https://git.nomics.world', help='base URL of GitLab instance')
     parser.add_argument('--debug-http', action='store_true', help='display http.client debug messages')
