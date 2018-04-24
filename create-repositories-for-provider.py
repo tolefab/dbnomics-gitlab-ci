@@ -21,7 +21,11 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-"""Create source data and JSON data repositories for a provider in DB.nomics GitLab-CI."""
+"""Create repositories for a provider in DB.nomics GitLab-CI:
+   - dbnomics-fetchers/XXX-fetcher
+   - dbnomics-source-data/XXX-source-data
+   - dbnomics-json-data/XXX-json-data
+"""
 
 
 import argparse
