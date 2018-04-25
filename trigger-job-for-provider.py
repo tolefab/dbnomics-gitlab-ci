@@ -68,10 +68,10 @@ def main():
     gl = gitlab.Gitlab(args.gitlab_base_url, private_token=os.environ.get('PRIVATE_TOKEN'), api_version=4)
     gl.auth()
 
-    fetcher_project = gl.projects.get("{}/{}-fetcher".format(dbnomics_fetchers_namespace, args.provider_slug))
-    log.debug('fetcher project: {}'.format(fetcher_project))
-
     if args.job_name in {"download", "convert"}:
+        fetcher_project = gl.projects.get("{}/{}-fetcher".format(dbnomics_fetchers_namespace, args.provider_slug))
+        log.debug('fetcher project: {}'.format(fetcher_project))
+
         fetchers_group_url = args.gitlab_base_url + '/' + dbnomics_fetchers_namespace
         fetcher_repo_url = '/'.join([fetchers_group_url, args.provider_slug + '-fetcher'])
 
