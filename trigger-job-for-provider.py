@@ -63,8 +63,6 @@ def main():
     if args.gitlab_base_url.endswith('/'):
         args.gitlab_base_url = args.gitlab_base_url[:-1]
 
-    api_base_url = args.gitlab_base_url + '/api/v4'
-
     gl = gitlab.Gitlab(args.gitlab_base_url, private_token=os.environ.get('PRIVATE_TOKEN'), api_version=4)
     gl.auth()
 
