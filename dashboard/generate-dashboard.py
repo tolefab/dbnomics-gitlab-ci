@@ -285,7 +285,7 @@ def main():
         for job in project.jobs.list():
             job_variables = get_fetcher_job_variables(job)
             job_type = job_variables.get("JOB")
-            if job_type is not None:
+            if job_type is not None and job.attributes['finished_at'] is not None:  # Do not include running jobs
                 fetcher_jobs_by_type[job_type].append(job)
         return fetcher_jobs_by_type
 
