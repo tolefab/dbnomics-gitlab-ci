@@ -170,7 +170,7 @@ def format_job_link(project, job):
         "started at: {}".format(format_datetime_str(job.started_at)),
         "finished at: {}".format(format_datetime_str(job.finished_at)),
     ])
-    assert job.status in {"success", "failed", "cancelled"}, job.status
+    assert job.status in {"success", "failed", "canceled"}, job.status
     i_classes = "fa-exclamation-circle text-danger" if job.status == "failed" else \
         "fa-minus-circle text-dark" if job.status == "cancelled" else \
         "fa-check-circle text-success"
