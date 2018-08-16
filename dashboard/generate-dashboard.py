@@ -88,56 +88,6 @@ def get_importer_job_variables(job):
     return {"PROVIDER_SLUG": values[0] if values else None}
 
 
-def print_job(project, job):
-    job_url = "{}/{}/-/jobs/{}".format(args.gitlab_base_url, project.path_with_namespace, job.id)
-    print("  - {}".format(job.id))
-    print("    - url: {}".format(job_url))
-    print("    - status: {}".format(job.status))
-    print("    - duration: {}".format(humanfriendly.format_timespan(job.duration)))
-    print("    - created at: {}".format(format_datetime_str(job.created_at)))
-    print("    - started at: {}".format(format_datetime_str(job.started_at)))
-    print("    - finished at: {}".format(format_datetime_str(job.finished_at)))
-
-
-def print_markdown_dashboard(fetchers_projects, importer_project, pipeline_schedule_by_fetcher_id, jobs_by_fetcher_id,
-                             index_jobs_by_provider_slug):
-    for project in fetchers_projects:
-        provider_slug = project.name[:-len("-fetcher")]
-        print("# {}".format(provider_slug))
-
-        pipeline_schedule = pipeline_schedule_by_fetcher_id.get(project.id)
-        print("- scheduler")
-        if pipeline_schedule is None:
-            print("  - status: undefined")
-        else:
-            pipeline_schedule_url = "{}/{}/pipeline_schedules/{}/edit".format(
-                args.gitlab_base_url, project.path_with_namespace, pipeline_schedule.id)
-            print("  - url: {}".format(pipeline_schedule_url))
-            print("  - status: {}".format("active" if pipeline_schedule.active else "inactive"))
-            print("  - next run at: {}".format(format_datetime_str(pipeline_schedule.next_run_at)))
-            print("  - cron expression: {!r}".format(pipeline_schedule.cron))
-
-        fetcher_jobs = jobs_by_fetcher_id[project.id]
-
-        print("- downloads")
-        for job in take(3, fetcher_jobs["download"]):
-            print_job(project, job)
-
-        print("- converts")
-        for job in take(3, fetcher_jobs["convert"]):
-            print_job(project, job)
-
-        index_jobs = index_jobs_by_provider_slug.get(provider_slug)
-        if index_jobs:
-            print("- indexations")
-            for index_job in take(3, index_jobs):
-                print_job(importer_project, index_job)
-        else:
-            print("- no indexation jobs found in the {} latest jobs of dbnomics-importer".format(dbnomics_importer_nb_jobs))
-
-        print("")
-
-
 def print_html_dashboard(fetchers_projects, importer_project, pipeline_schedule_by_fetcher_id, jobs_by_fetcher_id,
                          index_jobs_by_provider_slug):
     tbody_io = StringIO()
