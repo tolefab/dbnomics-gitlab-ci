@@ -115,17 +115,27 @@ def print_html_dashboard(fetchers_projects, importer_project, pipeline_schedule_
 
 def format_job_link(project, job):
     job_url = "{}/{}/-/jobs/{}".format(args.gitlab_base_url, project.path_with_namespace, job.id)
+
+    job_status = job.status
+    if not job.started_at:
+        job_status = "stuck"  # Introduce a new status for jobs that never started.
+
     title = "<br>".join([
-        "status: {}".format(job.status),
-        "duration: {}".format(humanfriendly.format_timespan(job.duration)),
-        "created at: {}".format(format_datetime_str(job.created_at)),
-        "started at: {}".format(format_datetime_str(job.started_at)),
-        "finished at: {}".format(format_datetime_str(job.finished_at)),
+        "status: {}".format(job_status),
+        "duration: {}".format(humanfriendly.format_timespan(job.duration) if job.duration else "null"),
+        "created at: {}".format(format_datetime_str(job.created_at) if job.created_at else "null"),
+        "started at: {}".format(format_datetime_str(job.started_at) if job.started_at else "null"),
+        "finished at: {}".format(format_datetime_str(job.finished_at) if job.finished_at else "null"),
     ])
-    assert job.status in {"success", "failed", "canceled"}, job.status
-    i_classes = "fa-exclamation-circle text-danger" if job.status == "failed" else \
-        "fa-minus-circle text-dark" if job.status == "cancelled" else \
-        "fa-check-circle text-success"
+
+    i_classes = "fa-check-circle text-success"
+    if job_status == "failed":
+        i_classes = "fa-exclamation-circle text-danger"
+    elif job_status == "stuck":
+        i_classes = "fa-exclamation-circle text-dark"
+    elif job_status == "canceled":
+        i_classes = "fa-minus-circle text-dark"
+
     return """<a href="{job_url}" class="mr-1" target="_blank" data-toggle="tooltip" data-html="true" data-placement="auto" title="{title}"><i class="fas {i_classes}"></i></a>""".format(
         job_url=job_url, i_classes=i_classes, title=title)
 
@@ -264,9 +274,8 @@ def main():
         fetcher_jobs_by_type = {"download": [], "convert": []}
         for job in project.jobs.list():
             job_variables = get_fetcher_job_variables(job)
-            job_type = job_variables.get("JOB")
-            if job_type is not None and job.attributes['finished_at'] is not None:  # Do not include running jobs
-                fetcher_jobs_by_type[job_type].append(job)
+            job_type = job_variables.get("JOB") or "download"
+            fetcher_jobs_by_type[job_type].append(job)
         return fetcher_jobs_by_type
 
     jobs_by_fetcher_id = {
