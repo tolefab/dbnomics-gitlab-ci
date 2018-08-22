@@ -53,6 +53,7 @@ dbnomics_fetchers_namespace = "dbnomics-fetchers"
 dbnomics_importer_nb_jobs = 100
 log = logging.getLogger(__name__)
 script_dir = Path(__file__).parent
+star_providers_slugs = ["bis", "ecb", "eurostat", "imf", "oecd", "ilo", "wto", "wb"]
 
 
 def format_datetime_str(s):
@@ -205,7 +206,7 @@ def format_fetcher_tr(project, importer_project, provider_number, provider_slug,
         )
 
     return """<tr>
-        <th scope="row">{provider_number}</th>
+        <th scope="row">{provider_number}{star}</th>
         <th scope="row">
             {provider_slug}
             <a href="{git_link}" class="ml-2 small" target="_blank" title="View Git repository">git</a>
@@ -217,6 +218,9 @@ def format_fetcher_tr(project, importer_project, provider_number, provider_slug,
     </tr>""".format(
         pipeline_schedule_link=pipeline_schedule_link,
         provider_number=provider_number,
+        star=('<i class="fas fa-star ml-2"></i>'
+              if provider_slug in star_providers_slugs
+              else ""),
         provider_slug=provider_slug,
         git_link="{}/{}".format(args.gitlab_base_url, project.path_with_namespace),
         download_links=download_links,
