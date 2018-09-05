@@ -132,8 +132,11 @@ def format_job_link(project, job):
         "finished at: {}".format(format_datetime_str(job.finished_at) if job.finished_at else "null"),
     ])
 
+    # Class names are from https://fontawesome.com/icons
     i_classes = "fa-check-circle text-success"
-    if job_status == "failed":
+    if job_status == "running":
+        i_classes = "fa-clock text-info"
+    elif job_status == "failed":
         i_classes = "fa-exclamation-circle text-danger"
     elif job_status == "stuck":
         i_classes = "fa-exclamation-circle text-dark"
