@@ -218,6 +218,7 @@ def format_fetcher_tr(project, importer_project, provider_number, provider_slug,
             <a href="{git_link}" class="ml-2 small" target="_blank">fetcher</a>
             <a href="{source_data_link}" class="ml-2 small" target="_blank">source</a>
             <a href="{converted_data_link}" class="ml-2 small" target="_blank">converted</a>
+            <a href="{jobs_link}" class="ml-2 small" target="_blank">jobs</a>
         </th>
         <td>{pipeline_schedule_link}</td>
         <td>{download_links}</td>
@@ -235,6 +236,7 @@ def format_fetcher_tr(project, importer_project, provider_number, provider_slug,
                                                        dbnomics_source_data_namespace, provider_slug),
         converted_data_link="{}/{}/{}-json-data".format(args.gitlab_base_url,
                                                         dbnomics_json_data_namespace, provider_slug),
+        jobs_link="{}/{}/-/jobs".format(args.gitlab_base_url, project.path_with_namespace),
         download_links=download_links,
         conversion_links=conversion_links,
         indexation_links=indexation_links,
