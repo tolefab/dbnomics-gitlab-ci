@@ -50,10 +50,13 @@ from toolz import take
 
 dbnomics_namespace = "dbnomics"
 dbnomics_fetchers_namespace = "dbnomics-fetchers"
+dbnomics_source_data_namespace = "dbnomics-source-data"
+dbnomics_json_data_namespace = "dbnomics-json-data"
 dbnomics_importer_nb_jobs = 100
+star_providers_slugs = ["bis", "ecb", "eurostat", "imf", "oecd", "ilo", "wto", "wb"]
+
 log = logging.getLogger(__name__)
 script_dir = Path(__file__).parent
-star_providers_slugs = ["bis", "ecb", "eurostat", "imf", "oecd", "ilo", "wto", "wb"]
 
 
 def format_datetime_str(s):
@@ -209,7 +212,9 @@ def format_fetcher_tr(project, importer_project, provider_number, provider_slug,
         <th scope="row">{provider_number}{star}</th>
         <th scope="row">
             {provider_slug}
-            <a href="{git_link}" class="ml-2 small" target="_blank" title="View Git repository">git</a>
+            <a href="{git_link}" class="ml-2 small" target="_blank">fetcher</a>
+            <a href="{source_data_link}" class="ml-2 small" target="_blank">source</a>
+            <a href="{converted_data_link}" class="ml-2 small" target="_blank">converted</a>
         </th>
         <td>{pipeline_schedule_link}</td>
         <td>{download_links}</td>
@@ -223,6 +228,10 @@ def format_fetcher_tr(project, importer_project, provider_number, provider_slug,
               else ""),
         provider_slug=provider_slug,
         git_link="{}/{}".format(args.gitlab_base_url, project.path_with_namespace),
+        source_data_link="{}/{}/{}-source-data".format(args.gitlab_base_url,
+                                                       dbnomics_source_data_namespace, provider_slug),
+        converted_data_link="{}/{}/{}-json-data".format(args.gitlab_base_url,
+                                                        dbnomics_json_data_namespace, provider_slug),
         download_links=download_links,
         conversion_links=conversion_links,
         indexation_links=indexation_links,
