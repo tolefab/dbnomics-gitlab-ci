@@ -1,5 +1,4 @@
 humanfriendly
-python-dateutil
 python-gitlab
 pytest
 requests

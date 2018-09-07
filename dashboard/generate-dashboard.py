@@ -32,20 +32,18 @@ See https://git.nomics.world/dbnomics-fetchers/documentation/wikis/Setup-CI-jobs
 """
 
 import argparse
-import datetime
 import logging
 import os
 import re
 import sys
 import time
+from datetime import datetime
 from io import StringIO
 from pathlib import Path
 from string import Template
 
-import dateutil.parser
 import gitlab
 import humanfriendly
-import requests
 from toolz import take
 
 dbnomics_namespace = "dbnomics"
@@ -59,9 +57,10 @@ log = logging.getLogger(__name__)
 script_dir = Path(__file__).parent
 
 
-def format_datetime_str(s):
-    dt = dateutil.parser.parse(s)
-    return "{:%c}".format(dt)
+def local_time_tag(datetime_str):
+    return """<local-time datetime='{datetime_str}' day='numeric' month='short' year='numeric' hour='numeric' minute='numeric'>
+        {datetime_str}
+    </local-time>""".format(datetime_str=datetime_str)
 
 
 def get_pipeline_schedule(project):
@@ -109,10 +108,9 @@ def print_html_dashboard(fetchers_projects, importer_project, pipeline_schedule_
     dashboard_template = Template((script_dir / "dashboard.template.html").read_text())  # pylint: disable=E1101
     tbody_io.seek(0)
     tbody = tbody_io.read()
-    generation_message = "Dashboard generated on {:%c} in {:.2f} seconds".format(
-        datetime.datetime.now(), time.time() - start_time)
     print(dashboard_template.substitute(
-        generation_message=generation_message,
+        generation_local_time_tag=local_time_tag(datetime.utcnow().isoformat() + 'Z'),
+        generation_duration=humanfriendly.format_timespan(time.time() - start_time),
         tbody=tbody,
     ))
 
@@ -126,10 +124,10 @@ def format_job_link(project, job):
 
     title = "<br>".join([
         "status: {}".format(job_status),
-        "duration: {}".format(humanfriendly.format_timespan(job.duration) if job.duration else "null"),
-        "created at: {}".format(format_datetime_str(job.created_at) if job.created_at else "null"),
-        "started at: {}".format(format_datetime_str(job.started_at) if job.started_at else "null"),
-        "finished at: {}".format(format_datetime_str(job.finished_at) if job.finished_at else "null"),
+        "duration: {}".format(humanfriendly.format_timespan(job.duration) if job.duration else "?"),
+        "created: {}".format(local_time_tag(job.created_at) if job.created_at else "?"),
+        "started: {}".format(local_time_tag(job.started_at) if job.started_at else "?"),
+        "finished: {}".format(local_time_tag(job.finished_at) if job.finished_at else "?"),
     ])
 
     # Class names are from https://fontawesome.com/icons
@@ -157,7 +155,7 @@ def format_pipeline_schedule_link(project, pipeline_schedule):
             args.gitlab_base_url, project.path_with_namespace, pipeline_schedule.id)
         scheduler_title = "<br>".join([
             "status: {}".format("active" if pipeline_schedule.active else "inactive"),
-            "next run at: {}".format(format_datetime_str(pipeline_schedule.next_run_at)),
+            "next run: {}".format(local_time_tag(pipeline_schedule.next_run_at)),
             "cron expression: {!r}".format(pipeline_schedule.cron),
         ])
         pipeline_schedule_link = """<a href="{pipeline_schedule_url}" target="_blank" data-toggle="tooltip" data-html="true" data-placement="auto" title="{scheduler_title}"><i class="fas {i_class}"></i></a>""".format(
