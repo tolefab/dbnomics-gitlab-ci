@@ -231,7 +231,8 @@ def format_fetcher_tr(project, importer_project, provider_number, provider_slug,
     elif len(provider_solr_results) > 1:
         log.warning("Many providers were found from slug %r in Solr, unable to determine provider code", provider_slug)
         provider_solr = None
-    provider_solr = provider_solr_results.docs[0]
+    else:
+        provider_solr = provider_solr_results.docs[0]
 
     return """<tr id="{provider_slug}">
         <th scope="row">{provider_number}{star}</th>
