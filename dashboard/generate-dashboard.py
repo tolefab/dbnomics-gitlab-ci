@@ -29,6 +29,18 @@
 - last N indexations with the same infos than downloads
 
 See https://git.nomics.world/dbnomics-fetchers/documentation/wikis/Setup-CI-jobs
+
+The following definitions help developing in a REPL environment:
+
+numeric_level = "DEBUG"
+logging.basicConfig(level=numeric_level, stream=sys.stdout)
+logging.getLogger("urllib3").setLevel(logging.INFO)
+log.debug("Test")
+
+from unittest.mock import MagicMock
+args = MagicMock(solr_url="http://localhost:8983/solr/dbnomics")
+
+provider_slug = 'scsmich'
 """
 
 import argparse
