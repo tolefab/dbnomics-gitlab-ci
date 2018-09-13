@@ -209,7 +209,7 @@ def format_fetcher_tr(project, importer_project, provider_number, provider_slug,
             title=title,
         )
 
-    return """<tr>
+    return """<tr id="{provider_slug}">
         <th scope="row">{provider_number}{star}</th>
         <th scope="row">
             {provider_slug}
