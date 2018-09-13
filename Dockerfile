@@ -1,6 +1,6 @@
 FROM debian:latest
 
-MAINTAINER DB.nomics Project
+MAINTAINER DBnomics Project
 
 RUN apt --yes update
 RUN apt --yes install git openssh-client python3 python3-pip
