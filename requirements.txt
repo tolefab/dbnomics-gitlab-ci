@@ -1,5 +1,7 @@
 humanfriendly
 python-gitlab
+pysolr
 pytest
 requests
+solrq
 toolz >= 0.9.0

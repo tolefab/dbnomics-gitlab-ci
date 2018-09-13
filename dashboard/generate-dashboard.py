@@ -56,6 +56,8 @@ from string import Template
 
 import gitlab
 import humanfriendly
+import pysolr
+from solrq import Q
 from toolz import take
 
 dbnomics_namespace = "dbnomics"
@@ -221,14 +223,24 @@ def format_fetcher_tr(project, importer_project, provider_number, provider_slug,
             title=title,
         )
 
+    solr = pysolr.Solr(args.solr_url)
+    provider_solr_results = solr.search(Q(type='provider', slug=provider_slug))
+    if not provider_solr_results:
+        log.warning("Could not find provider from slug %r in Solr, unable to determine provider code", provider_slug)
+        provider_solr = None
+    elif len(provider_solr_results) > 1:
+        log.warning("Many providers were found from slug %r in Solr, unable to determine provider code", provider_slug)
+        provider_solr = None
+    provider_solr = provider_solr_results.docs[0]
+
     return """<tr id="{provider_slug}">
         <th scope="row">{provider_number}{star}</th>
         <th scope="row">
-            {provider_slug}
-            <a href="{git_link}" class="ml-2 small" target="_blank">fetcher</a>
-            <a href="{source_data_link}" class="ml-2 small" target="_blank">source</a>
-            <a href="{converted_data_link}" class="ml-2 small" target="_blank">converted</a>
-            <a href="{jobs_link}" class="ml-2 small" target="_blank">jobs</a>
+            {ui_link}
+            <a href="{git_href}" class="ml-2 small" target="_blank">fetcher</a>
+            <a href="{source_data_href}" class="ml-2 small" target="_blank">source</a>
+            <a href="{converted_data_href}" class="ml-2 small" target="_blank">converted</a>
+            <a href="{jobs_href}" class="ml-2 small" target="_blank">jobs</a>
         </th>
         <td>{pipeline_schedule_link}</td>
         <td>{download_links}</td>
@@ -241,12 +253,15 @@ def format_fetcher_tr(project, importer_project, provider_number, provider_slug,
               if provider_slug in star_providers_slugs
               else ""),
         provider_slug=provider_slug,
-        git_link="{}/{}".format(args.gitlab_base_url, project.path_with_namespace),
-        source_data_link="{}/{}/{}-source-data".format(args.gitlab_base_url,
+        ui_link=('<a href="{}/{}" target="_blank">{}</a>'.format(args.ui_base_url, provider_solr["code"], provider_slug)
+                 if provider_solr is not None
+                 else provider_slug),
+        git_href="{}/{}".format(args.gitlab_base_url, project.path_with_namespace),
+        source_data_href="{}/{}/{}-source-data".format(args.gitlab_base_url,
                                                        dbnomics_source_data_namespace, provider_slug),
-        converted_data_link="{}/{}/{}-json-data".format(args.gitlab_base_url,
+        converted_data_href="{}/{}/{}-json-data".format(args.gitlab_base_url,
                                                         dbnomics_json_data_namespace, provider_slug),
-        jobs_link="{}/{}/-/jobs".format(args.gitlab_base_url, project.path_with_namespace),
+        jobs_href="{}/{}/-/jobs".format(args.gitlab_base_url, project.path_with_namespace),
         download_links=download_links,
         conversion_links=conversion_links,
         indexation_links=indexation_links,
@@ -257,6 +272,8 @@ def main():
     global args
     parser = argparse.ArgumentParser()
     parser.add_argument('--gitlab-base-url', default='https://git.nomics.world', help='base URL of GitLab instance')
+    parser.add_argument('--ui-base-url', default='https://next.nomics.world', help='base URL of DBnomics UI')
+    parser.add_argument('--solr-url', default='http://localhost:8983/solr/dbnomics', help='base URL of Solr core')
     parser.add_argument('--fetchers', nargs='+', metavar='PROVIDER_SLUG',
                         help='generate dashboard for those fetchers only (space-separated)')
     parser.add_argument('--log', default='WARNING', help='level of logging messages')
@@ -265,7 +282,12 @@ def main():
     numeric_level = getattr(logging, args.log.upper(), None)
     if not isinstance(numeric_level, int):
         raise ValueError('Invalid log level: {}'.format(args.log))
-    logging.basicConfig(level=numeric_level, stream=sys.stderr)
+    logging.basicConfig(
+        format="%(levelname)s:%(name)s:%(asctime)s:%(message)s",
+        level=numeric_level,
+        stream=sys.stderr,  # Script already outputs to stdout.
+    )
+    logging.getLogger("pysolr").setLevel(logging.WARNING)
     logging.getLogger("urllib3").setLevel(args.log.upper())
 
     if not os.environ.get('PRIVATE_TOKEN'):
