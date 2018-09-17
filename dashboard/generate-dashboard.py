@@ -224,15 +224,23 @@ def format_fetcher_tr(project, importer_project, provider_number, provider_slug,
         )
 
     solr = pysolr.Solr(args.solr_url)
+
     provider_solr_results = solr.search(Q(type='provider', slug=provider_slug))
     if not provider_solr_results:
-        log.warning("Could not find provider from slug %r in Solr, unable to determine provider code", provider_slug)
+        log.warning("Could not find provider from slug %r in Solr", provider_slug)
         provider_solr = None
     elif len(provider_solr_results) > 1:
-        log.warning("Many providers were found from slug %r in Solr, unable to determine provider code", provider_slug)
+        log.warning("Many providers were found from slug %r in Solr", provider_slug)
         provider_solr = None
     else:
         provider_solr = provider_solr_results.docs[0]
+
+    nb_datasets = solr.search(Q(type='dataset', provider_code=provider_solr["code"])).hits \
+        if provider_solr is not None \
+        else None
+    nb_series = solr.search(Q(type='series', provider_code=provider_solr["code"])).hits \
+        if provider_solr is not None \
+        else None
 
     return """<tr id="{provider_slug}">
         <th scope="row">{provider_number}{star}</th>
@@ -247,6 +255,8 @@ def format_fetcher_tr(project, importer_project, provider_number, provider_slug,
         <td>{download_links}</td>
         <td>{conversion_links}</td>
         <td>{indexation_links}</td>
+        <td>{nb_datasets}</td>
+        <td>{nb_series}</td>
     </tr>""".format(
         pipeline_schedule_link=pipeline_schedule_link,
         provider_number=provider_number,
@@ -266,6 +276,8 @@ def format_fetcher_tr(project, importer_project, provider_number, provider_slug,
         download_links=download_links,
         conversion_links=conversion_links,
         indexation_links=indexation_links,
+        nb_datasets=nb_datasets if nb_datasets is not None else "?",
+        nb_series=nb_series if nb_series is not None else "?",
     )
 
 
