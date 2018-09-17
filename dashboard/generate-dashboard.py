@@ -276,8 +276,8 @@ def format_fetcher_tr(project, importer_project, provider_number, provider_slug,
         download_links=download_links,
         conversion_links=conversion_links,
         indexation_links=indexation_links,
-        nb_datasets=nb_datasets if nb_datasets is not None else "?",
-        nb_series=nb_series if nb_series is not None else "?",
+        nb_datasets=humanfriendly.format_number(nb_datasets) if nb_datasets is not None else "?",
+        nb_series=humanfriendly.format_number(nb_series) if nb_series is not None else "?",
     )
 
 
