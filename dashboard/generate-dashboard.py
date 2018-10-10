@@ -120,8 +120,7 @@ def print_html_dashboard(fetchers_projects, importer_project, pipeline_schedule_
                                          download_jobs, convert_jobs, index_jobs))
 
     dashboard_template = Template((script_dir / "dashboard.template.html").read_text())  # pylint: disable=E1101
-    tbody_io.seek(0)
-    tbody = tbody_io.read()
+    tbody = tbody_io.getvalue()
     print(dashboard_template.substitute(
         generation_local_time_tag=local_time_tag(datetime.utcnow().isoformat() + 'Z'),
         generation_duration=humanfriendly.format_timespan(time.time() - start_time),
