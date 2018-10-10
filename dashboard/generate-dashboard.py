@@ -281,10 +281,9 @@ def format_fetcher_tr(project, importer_project, provider_number, provider_slug,
 
 
 def main():
-    global args
     parser = argparse.ArgumentParser()
     parser.add_argument('--gitlab-base-url', default='https://git.nomics.world', help='base URL of GitLab instance')
-    parser.add_argument('--ui-base-url', default='https://next.nomics.world', help='base URL of DBnomics UI')
+    parser.add_argument('--ui-base-url', default='https://db.nomics.world', help='base URL of DBnomics UI')
     parser.add_argument('--solr-url', default='http://localhost:8983/solr/dbnomics', help='base URL of Solr core')
     parser.add_argument('--fetchers', nargs='+', metavar='PROVIDER_SLUG',
                         help='generate dashboard for those fetchers only (space-separated)')
