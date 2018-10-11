@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
 
-# dbnomics-gitlab-ci -- Scripts around DB.nomics GitLab-CI
+# dbnomics-gitlab-ci -- Scripts around DBnomics GitLab-CI
 # By: Christophe Benz <christophe.benz@cepremap.org>
 #
 # Copyright (C) 2017 Cepremap
@@ -21,7 +21,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-"""Create repositories for a provider in DB.nomics GitLab-CI:
+"""Create repositories for a provider in DBnomics GitLab-CI:
    - dbnomics-fetchers/XXX-fetcher
    - dbnomics-source-data/XXX-source-data
    - dbnomics-json-data/XXX-json-data
@@ -86,7 +86,7 @@ def main():
         fetcher_project = gl.projects.create({
             'name': fetcher_project_name,
             'namespace_id': fetchers_namespace.id,
-            'description': "DB.nomics fetcher for series from {} database.".format(args.provider_slug),
+            'description': "DBnomics fetcher for series from {} database.".format(args.provider_slug),
             'visibility': VISIBILITY_PUBLIC,
         })
         http_url_to_repo = fetcher_project.http_url_to_repo

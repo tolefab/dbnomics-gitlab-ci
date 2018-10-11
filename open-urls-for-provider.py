@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
 
-# dbnomics-gitlab-ci -- Scripts around DB.nomics GitLab-CI
+# dbnomics-gitlab-ci -- Scripts around DBnomics GitLab-CI
 # By: Christophe Benz <christophe.benz@cepremap.org>
 #
 # Copyright (C) 2017 Cepremap

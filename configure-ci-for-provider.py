@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
 
-# dbnomics-gitlab-ci -- Scripts around DB.nomics GitLab-CI
+# dbnomics-gitlab-ci -- Scripts around DBnomics GitLab-CI
 # By: Christophe Benz <christophe.benz@cepremap.org>
 #
 # Copyright (C) 2017 Cepremap
@@ -21,7 +21,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-"""Configure a provider in DB.nomics GitLab-CI.
+"""Configure a provider in DBnomics GitLab-CI.
 
 See https://git.nomics.world/dbnomics-fetchers/documentation/wikis/Setup-CI-jobs
 """
