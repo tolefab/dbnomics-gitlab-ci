@@ -60,6 +60,8 @@ def main():
     if args.debug_http:
         http.client.HTTPConnection.debuglevel = 1
 
+    args.provider_slug = args.provider_slug.lower()
+
     if not os.environ.get('PRIVATE_TOKEN'):
         log.error("Please set PRIVATE_TOKEN environment variable before using this tool! (see README.md)")
         return 1
