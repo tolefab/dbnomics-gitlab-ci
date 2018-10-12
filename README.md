@@ -5,7 +5,7 @@ This repository contains scripts interacting with the GitLab Continuous Integrat
 It also defines a `Dockerfile` allowing Docker Hub to build a container image for us.
 Unfortunately, Docker Hub is only compatible with GitHub for now, and DBnomics is hosted on its own [GitLab platform](https://git.nomics.world/). That's why we created a mirror of this project [on GitHub](https://github.com/dbnomics/dbnomics-gitlab-ci), but the real home is [on DBnomics GitLab](https://git.nomics.world/dbnomics/dbnomics-gitlab-ci).
 
-The Docker image is referenced in `gitlab-ci.template.yml` with the line `image: dbnomics/dbnomics-gitlab-ci:latest`.
+The Docker image is referenced in `.gitlab-ci.yml` files of each fetcher, with the line `image: dbnomics/dbnomics-gitlab-ci:latest`.
 
 ## Obtain the private token
 
@@ -13,7 +13,7 @@ The private token is stored in a private Wiki page: https://git.nomics.world/cep
 
 ## Configure CI for a provider
 
-- Copy `gitlab-ci.template.yml` from here to `.gitlab-ci.yml` in the fetcher directory.
+- Use [dbnomics-fetcher-cookiecutter](https://git.nomics.world/dbnomics/dbnomics-fetcher-cookiecutter), or copy its `.gitlab-ci.yml` to the fetcher directory, and subtitute `{{ }}` placeholders by real values.
 - Set the PROVIDER_SLUG variable in the `variables` section of the YAML file.
 - [optional] If the fetcher scripts are designed to read/write Git objects (blobs and trees) instead of files and create the commit, for example because they implement incremental mode, adapt the CI in consequence. Look at [IMF CI config file](https://git.nomics.world/dbnomics-fetchers/imf-fetcher/blob/master/.gitlab-ci.yml) for an example.
 - Check that you keep lines of `.gitlab-ci.yml` specific to this fetcher (for example `apt install wget`).
