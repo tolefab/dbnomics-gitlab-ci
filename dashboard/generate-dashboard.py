@@ -67,6 +67,7 @@ dbnomics_json_data_namespace = "dbnomics-json-data"
 dbnomics_importer_nb_jobs = 100
 star_providers_slugs = ["bis", "ecb", "eurostat", "imf", "oecd", "ilo", "wto", "wb"]
 
+args = None
 log = logging.getLogger(__name__)
 script_dir = Path(__file__).parent
 
@@ -89,10 +90,20 @@ def get_fetcher_job_variables(job):
 
     Getting job variables is not supported by GitLab API v4.
     """
-    job_trace = job.trace().decode('utf-8')
+    try:
+        job_trace_bytes = job.trace()
+    except gitlab.exceptions.GitlabGetError:
+        # Sometimes the trace is missing. It happened when we deleted some of them accidentally.
+        log.exception("Error fetching trace for job %r", job)
+        return None
+
+    job_trace = job_trace_bytes.decode('utf-8')
     values = re.findall('Running job ([^$ ]+)', job_trace)
     assert len(values) <= 1, values
-    return {"JOB": values[0] if values else None}
+    if not values:
+        return None
+
+    return {"JOB": values[0]}
 
 
 def get_importer_job_variables(job):
@@ -281,6 +292,7 @@ def format_fetcher_tr(project, importer_project, provider_number, provider_slug,
 
 
 def main():
+    global args
     parser = argparse.ArgumentParser()
     parser.add_argument('--gitlab-base-url', default='https://git.nomics.world', help='base URL of GitLab instance')
     parser.add_argument('--ui-base-url', default='https://db.nomics.world', help='base URL of DBnomics UI')
@@ -334,8 +346,10 @@ def main():
         log.debug("Fetching jobs for %r", project.name)
         fetcher_jobs_by_type = {"download": [], "convert": []}
         for job in project.jobs.list():
-            job_variables = get_fetcher_job_variables(job)
-            job_type = job_variables.get("JOB") or "download"
+            job_variables = get_fetcher_job_variables(job) or {}
+            job_type = job_variables.get("JOB")
+            if job_type is None:
+                continue
             fetcher_jobs_by_type[job_type].append(job)
         return fetcher_jobs_by_type
 
