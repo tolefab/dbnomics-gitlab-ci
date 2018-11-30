@@ -253,7 +253,10 @@ def format_fetcher_tr(project, importer_project, provider_number, provider_slug,
         else None
 
     return """<tr id="{provider_slug}">
-        <th scope="row">{provider_number}{star}</th>
+        <th scope="row">
+            <span class="mr-2">{provider_number}</span>
+            {star}
+        </th>
         <th scope="row">
             {ui_link}
             <a href="{git_href}" class="ml-2 small" target="_blank">fetcher</a>
@@ -270,7 +273,7 @@ def format_fetcher_tr(project, importer_project, provider_number, provider_slug,
     </tr>""".format(
         pipeline_schedule_link=pipeline_schedule_link,
         provider_number=provider_number,
-        star=('<i class="fas fa-star ml-2"></i>'
+        star=('<i class="fas fa-star"></i>'
               if provider_slug in star_providers_slugs
               else ""),
         provider_slug=provider_slug,
