@@ -300,8 +300,7 @@ def main():
     parser.add_argument('--gitlab-base-url', default='https://git.nomics.world', help='base URL of GitLab instance')
     parser.add_argument('--ui-base-url', default='https://db.nomics.world', help='base URL of DBnomics UI')
     parser.add_argument('--solr-url', default='http://localhost:8983/solr/dbnomics', help='base URL of Solr core')
-    parser.add_argument('--fetchers', nargs='+', metavar='PROVIDER_SLUG',
-                        help='generate dashboard for those fetchers only (space-separated)')
+    parser.add_argument('--providers', help='generate dashboard for those providers only (comma-separated)')
     parser.add_argument('--log', default='WARNING', help='level of logging messages')
     args = parser.parse_args()
 
@@ -320,6 +319,12 @@ def main():
         log.error("Please set PRIVATE_TOKEN environment variable before using this tool! (see README.md)")
         return 1
 
+    if args.providers is not None:
+        args.providers = [
+            provider_code.lower()
+            for provider_code in args.providers.strip().split(",")
+        ]
+
     if args.gitlab_base_url.endswith('/'):
         args.gitlab_base_url = args.gitlab_base_url[:-1]
 
@@ -335,7 +340,7 @@ def main():
         for group_project in dbnomics_fetchers_group.projects.list(order_by="name", sort="asc", all=True)
         # Skip other projects like "documentation".
         if group_project.name.endswith("-fetcher") and not group_project.name.startswith("dummy") and
-        (not args.fetchers or group_project.name[:-len("-fetcher")] in args.fetchers)
+        (not args.providers or group_project.name[:-len("-fetcher")] in args.providers)
     ]
 
     # For each fetcher get its pipeline schedule.
