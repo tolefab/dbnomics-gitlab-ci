@@ -354,6 +354,8 @@ def main():
         log.debug("Fetching jobs for %r", project.name)
         fetcher_jobs_by_type = {"download": [], "convert": []}
         for job in project.jobs.list():
+            if job.ref != "master":
+                continue
             job_variables = get_fetcher_job_variables(job) or {}
             job_type = job_variables.get("JOB")
             if job_type is None:
