@@ -294,6 +294,19 @@ def format_fetcher_tr(project, importer_project, provider_number, provider_slug,
     )
 
 
+def get_json_errors_artifact_dict(job):
+    """Return errors artifact as dict, or None if no 'errors.json' present in job artifacts or job has no artifact.
+    Raise a ValueError if json fails to load
+    """
+    if 'artifacts_file' in job.attributes:
+        zf = zipfile.ZipFile(io.BytesIO(job.artifacts()), "r")
+        if 'errors.json' in zf.namelist():
+            with zf.open('errors.json') as _f:
+                errors_dict = json.loads(_f.read())  # can raise a ValueError
+                return errors_dict
+    return None
+
+
 def main():
     global args
     parser = argparse.ArgumentParser()
@@ -301,6 +314,8 @@ def main():
     parser.add_argument('--ui-base-url', default='https://db.nomics.world', help='base URL of DBnomics UI')
     parser.add_argument('--solr-url', default='http://localhost:8983/solr/dbnomics', help='base URL of Solr core')
     parser.add_argument('--providers', help='generate dashboard for those providers only (comma-separated)')
+    parser.add_argument('--all-branches', action="store_true",
+                        help='consider all branches for source-data and json-data jobs (not only master)')
     parser.add_argument('--log', default='WARNING', help='level of logging messages')
     args = parser.parse_args()
 
@@ -354,7 +369,7 @@ def main():
         log.debug("Fetching jobs for %r", project.name)
         fetcher_jobs_by_type = {"download": [], "convert": []}
         for job in project.jobs.list():
-            if job.ref != "master":
+            if not args.all_branches and job.ref != "master":
                 continue
             job_variables = get_fetcher_job_variables(job) or {}
             job_type = job_variables.get("JOB")
