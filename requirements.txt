@@ -1,5 +1,5 @@
 humanfriendly
-python-gitlab
+python-gitlab >= 1.4.0
 pysolr
 pytest
 requests
