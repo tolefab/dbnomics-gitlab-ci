@@ -233,24 +233,27 @@ def format_fetcher_tr(project, importer_project, provider_number, provider_slug,
             title=title,
         )
 
-    solr = pysolr.Solr(args.solr_url)
+    if not args.disable_solr_info:
+        solr = pysolr.Solr(args.solr_url)
 
-    provider_solr_results = solr.search(Q(type='provider', slug=provider_slug))
-    if not provider_solr_results:
-        log.warning("Could not find provider from slug %r in Solr", provider_slug)
-        provider_solr = None
-    elif len(provider_solr_results) > 1:
-        log.warning("Many providers were found from slug %r in Solr", provider_slug)
-        provider_solr = None
+        provider_solr_results = solr.search(Q(type='provider', slug=provider_slug))
+        if not provider_solr_results:
+            log.warning("Could not find provider from slug %r in Solr", provider_slug)
+            provider_solr = None
+        elif len(provider_solr_results) > 1:
+            log.warning("Many providers were found from slug %r in Solr", provider_slug)
+            provider_solr = None
+        else:
+            provider_solr = provider_solr_results.docs[0]
+
+        nb_datasets = solr.search(Q(type='dataset', provider_code=provider_solr["code"])).hits \
+            if provider_solr is not None \
+            else None
+        nb_series = solr.search(Q(type='series', provider_code=provider_solr["code"])).hits \
+            if provider_solr is not None \
+            else None
     else:
-        provider_solr = provider_solr_results.docs[0]
-
-    nb_datasets = solr.search(Q(type='dataset', provider_code=provider_solr["code"])).hits \
-        if provider_solr is not None \
-        else None
-    nb_series = solr.search(Q(type='series', provider_code=provider_solr["code"])).hits \
-        if provider_solr is not None \
-        else None
+        provider_solr = nb_datasets = nb_series = None
 
     return """<tr id="{provider_slug}">
         <th scope="row">
@@ -316,6 +319,7 @@ def main():
     parser.add_argument('--providers', help='generate dashboard for those providers only (comma-separated)')
     parser.add_argument('--all-branches', action="store_true",
                         help='consider all branches for source-data and json-data jobs (not only master)')
+    parser.add_argument('--disable-solr-info', action="store_true", help='disable requesting Solr to get additional information')
     parser.add_argument('--log', default='WARNING', help='level of logging messages')
     args = parser.parse_args()
 
