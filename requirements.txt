@@ -6,3 +6,4 @@ requests
 solrq
 toolz >= 0.9.0
 ujson
+git+https://git.nomics.world/dbnomics/dbnomics-json-errors.git@0.1.0#egg=dbnomics_json_errors

@@ -159,7 +159,7 @@ def format_job_link(project, job, job_type=None):
         else:
             if job_error_artifact_dict is not None:
                 errors = job_error_artifact_dict['errors']
-                nb_datasets = job_error_artifact_dict["nb_datasets"]
+                nb_datasets = job_error_artifact_dict["nb_expected_datasets"]
                 # percentage of datasets correctly completed
                 completion_pct = int(100 - (len(errors) / nb_datasets) * 100)
                 if completion_pct < 100:
