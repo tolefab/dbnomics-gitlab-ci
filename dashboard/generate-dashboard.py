@@ -44,11 +44,13 @@ provider_slug = 'scsmich'
 """
 
 import argparse
+import io
 import logging
 import os
 import re
 import sys
 import time
+import zipfile
 from datetime import datetime
 from io import StringIO
 from pathlib import Path
@@ -59,6 +61,7 @@ import humanfriendly
 import pysolr
 from solrq import Q
 from toolz import take
+import ujson as json
 
 dbnomics_namespace = "dbnomics"
 dbnomics_fetchers_namespace = "dbnomics-fetchers"
@@ -139,34 +142,79 @@ def print_html_dashboard(fetchers_projects, importer_project, pipeline_schedule_
     ))
 
 
-def format_job_link(project, job):
+def format_job_link(project, job, job_type=None):
     job_url = "{}/{}/-/jobs/{}".format(args.gitlab_base_url, project.path_with_namespace, job.id)
 
     job_status = job.status
     if not job.started_at:
         job_status = "stuck"  # Introduce a new status for jobs that never started.
 
-    title = "<br>".join([
+    completion_pct = errors_description = parsing_error = None
+    if job_type in ('download', 'convert'):
+        try:
+            job_error_artifact_dict = get_json_errors_artifact_dict(job)
+        except ValueError:
+            errors_description = "Error while parsing errors.json file !"
+            parsing_error = True
+        else:
+            if job_error_artifact_dict is not None:
+                errors = job_error_artifact_dict['errors']
+                nb_datasets = job_error_artifact_dict["nb_datasets"]
+                # percentage of datasets correctly completed
+                completion_pct = int(100 - (len(errors) / nb_datasets) * 100)
+                if completion_pct < 100:
+                    datasets_in_errors_list_str = ": {}".format(', '.join(sorted(errors.keys()))) if len(errors) < 10 else ''
+                    errors_description = "{}/{} datasets in error ({}%){}".format(
+                        len(errors), nb_datasets, 100 - completion_pct, datasets_in_errors_list_str)
+                else:
+                    errors_description = "100% datasets completed"
+
+    # Information to be displayed on tooltip
+    title = "<br>".join(filter(lambda e: e, [
         "status: {}".format(job_status),
+        "completion: {}".format(errors_description) if errors_description else None,
         "duration: {}".format(humanfriendly.format_timespan(job.duration) if job.duration else "?"),
         "created: {}".format(local_time_tag(job.created_at) if job.created_at else "?"),
         "started: {}".format(local_time_tag(job.started_at) if job.started_at else "?"),
         "finished: {}".format(local_time_tag(job.finished_at) if job.finished_at else "?"),
-    ])
+    ]))
 
-    # Class names are from https://fontawesome.com/icons
-    i_classes = "fa-check-circle text-success"
-    if job_status == "running":
-        i_classes = "fa-clock text-info"
-    elif job_status == "failed":
-        i_classes = "fa-exclamation-circle text-danger"
-    elif job_status == "stuck":
-        i_classes = "fa-exclamation-circle text-dark"
-    elif job_status == "canceled":
-        i_classes = "fa-minus-circle text-dark"
-
-    return """<a href="{job_url}" class="mr-1" target="_blank" data-toggle="tooltip" data-html="true" data-placement="auto" title="{title}"><i class="fas {i_classes}"></i></a>""".format(
-        job_url=job_url, i_classes=i_classes, title=title)
+    if completion_pct is not None and completion_pct != 100:
+        # completion information available and not 100% converted => display a progress bar
+        return """<a href="{job_url}" class="w-100 mr-2">
+            <div class="progress border border-danger bg-danger" title="{title}" data-toggle="tooltip" data-html="true">
+                <div role="progressbar" style="width: {completion_pct}%" aria-valuenow="{completion_pct}" aria-valuemin="0" aria-valuemax="100" class="progress-bar bg-light"></div>
+            </div>
+        </a>""".format(
+            title=title,
+            completion_pct=completion_pct,
+            job_url=job_url,
+        )
+    else:
+        # no completion information, or 100% completion => display a single icon
+        # Class names are from https://fontawesome.com/icons
+        if job_status == "success":
+            i_classes = "fa-check-circle text-success"
+            if job_type in ('download', 'convert'):
+                if completion_pct is not None:
+                    # 100% converted
+                    i_classes = "fa-check-circle text-success"
+                elif parsing_error:
+                    # error parsing errors.json file
+                    i_classes = "fa-exclamation-triangle"
+                else:
+                    # no completion information
+                    i_classes = "fa-circle text-success"
+        elif job_status == "running":
+            i_classes = "fa-clock text-info"
+        elif job_status == "failed":
+            i_classes = "fa-exclamation-circle text-danger"
+        elif job_status == "stuck":
+            i_classes = "fa-exclamation-circle text-dark"
+        elif job_status == "canceled":
+            i_classes = "fa-minus-circle text-dark"
+        return """<a href="{job_url}" class="mr-1" target="_blank" data-toggle="tooltip" data-html="true" data-placement="auto" title="{title}"><i class="fas {i_classes}"></i></a>""".format(
+            job_url=job_url, i_classes=i_classes, title=title)
 
 
 def format_pipeline_schedule_link(project, pipeline_schedule):
@@ -197,10 +245,10 @@ def format_fetcher_tr(project, importer_project, provider_number, provider_slug,
     fetcher_jobs_url = "{}/{}/-/jobs".format(args.gitlab_base_url, project.path_with_namespace)
 
     if download_jobs:
-        download_links = "".join(
-            format_job_link(project, job)
+        download_links = '<div class="d-flex align-items-center">{}</div>'.format(''.join(
+            format_job_link(project, job, job_type="download")
             for job in download_jobs
-        )
+        ))
     else:
         title = "No download jobs found in the latest jobs of {}".format(project.path)
         download_links = """<a href="{fetcher_jobs_url}" target="_blank" data-toggle="tooltip" data-placement="auto" title="{title}"><i class="fas fa-question-circle text-warning"></i></a>""".format(
@@ -209,10 +257,10 @@ def format_fetcher_tr(project, importer_project, provider_number, provider_slug,
         )
 
     if convert_jobs:
-        conversion_links = "".join(
-            format_job_link(project, job)
+        conversion_links = '<div class="d-flex align-items-center">{}</div>'.format(''.join(
+            format_job_link(project, job, job_type="convert")
             for job in convert_jobs
-        )
+        ))
     else:
         title = "No conversion jobs found in the latest jobs of {}".format(project.path)
         conversion_links = """<a href="{fetcher_jobs_url}" target="_blank" data-toggle="tooltip" data-placement="auto" title="{title}"><i class="fas fa-question-circle text-warning"></i></a>""".format(
@@ -319,7 +367,8 @@ def main():
     parser.add_argument('--providers', help='generate dashboard for those providers only (comma-separated)')
     parser.add_argument('--all-branches', action="store_true",
                         help='consider all branches for source-data and json-data jobs (not only master)')
-    parser.add_argument('--disable-solr-info', action="store_true", help='disable requesting Solr to get additional information')
+    parser.add_argument('--disable-solr-info', action="store_true",
+                        help='disable requesting Solr to get additional information')
     parser.add_argument('--log', default='WARNING', help='level of logging messages')
     args = parser.parse_args()
 
@@ -373,6 +422,7 @@ def main():
         log.debug("Fetching jobs for %r", project.name)
         fetcher_jobs_by_type = {"download": [], "convert": []}
         for job in project.jobs.list():
+            # job = project.jobs.get(22163)
             if not args.all_branches and job.ref != "master":
                 continue
             job_variables = get_fetcher_job_variables(job) or {}
