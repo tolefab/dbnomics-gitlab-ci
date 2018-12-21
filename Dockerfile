@@ -1,6 +1,6 @@
 FROM debian:latest
 
-MAINTAINER DBnomics Project
+LABEL maintainer="contact+docker@nomics.world"
 
 RUN apt --yes update
 RUN apt --yes install git openssh-client python3 python3-pip unzip wget
