@@ -1,6 +1,6 @@
 # DBnomics GitLab-CI
 
-This repository contains scripts interacting with the GitLab Continuous Integration of DBnomics and "DBnomics Dashboard" micro website (`dashboard` sub-dir).
+This repository contains scripts interacting with the GitLab Continuous Integration of DBnomics.
 
 It also defines a `Dockerfile` allowing Docker Hub to build a container image for us.
 Unfortunately, Docker Hub is only compatible with GitHub for now, and DBnomics is hosted on its own [GitLab platform](https://git.nomics.world/). That's why we created a mirror of this project [on GitHub](https://github.com/dbnomics/dbnomics-gitlab-ci), but the real home is [on DBnomics GitLab](https://git.nomics.world/dbnomics/dbnomics-gitlab-ci).
