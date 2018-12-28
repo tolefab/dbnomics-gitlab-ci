@@ -105,7 +105,7 @@ def main():
         log.debug('trigger of importer repo fetched')
 
         pipeline_variables = {'PROVIDER_SLUG': args.provider_slug}
-        importer_project.trigger_pipeline("master", trigger.token, pipeline_variables)
+        importer_project.trigger_pipeline(args.ref, trigger.token, pipeline_variables)
         log.debug('pipeline triggered for ref {!r} with variables {!r}'.format(args.ref, pipeline_variables))
 
         importer_jobs_url = importer_repo_url + '/-/jobs'
