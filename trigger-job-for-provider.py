@@ -4,7 +4,7 @@
 # dbnomics-gitlab-ci -- Scripts around DBnomics GitLab-CI
 # By: Christophe Benz <christophe.benz@cepremap.org>
 #
-# Copyright (C) 2017 Cepremap
+# Copyright (C) 2017-2018 Cepremap
 # https://git.nomics.world/dbnomics/dbnomics-gitlab-ci
 #
 # dbnomics-gitlab-ci is free software; you can redistribute it and/or modify
