@@ -46,7 +46,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('provider_slug', help='slug of the provider to configure')
-    parser.add_argument('--gitlab-base-url', default='https://git.nomics.world', help='base URL of GitLab instance')
+    parser.add_argument('--gitlab-url', default='https://git.nomics.world', help='base URL of GitLab instance')
     parser.add_argument('--debug-http', action='store_true', help='display http.client debug messages')
     parser.add_argument('-v', '--verbose', action='store_true', help='display logging messages from debug level')
     args = parser.parse_args()
@@ -66,10 +66,10 @@ def main():
         log.error("Please set PRIVATE_TOKEN environment variable before using this tool! (see README.md)")
         return 1
 
-    if args.gitlab_base_url.endswith('/'):
-        args.gitlab_base_url = args.gitlab_base_url[:-1]
+    if args.gitlab_url.endswith('/'):
+        args.gitlab_url = args.gitlab_url[:-1]
 
-    gl = gitlab.Gitlab(args.gitlab_base_url, private_token=os.environ.get('PRIVATE_TOKEN'), api_version=4)
+    gl = gitlab.Gitlab(args.gitlab_url, private_token=os.environ.get('PRIVATE_TOKEN'), api_version=4)
     gl.auth()
 
     # Create fetcher repo

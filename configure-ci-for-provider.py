@@ -123,7 +123,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('provider_slug', help='slug of the provider to configure')
     parser.add_argument('--debug-http', action='store_true', help='display http.client debug messages')
-    parser.add_argument('--gitlab-base-url', default='https://git.nomics.world', help='base URL of GitLab instance')
+    parser.add_argument('--gitlab-url', default='https://git.nomics.world', help='base URL of GitLab instance')
     parser.add_argument('--importer-project-id', type=int, default=default_importer_project_id,
                         help='ID of the dbnomics-importer project')
     parser.add_argument('--no-delete', action='store_true', help='disable deletion of existing items - for debugging')
@@ -146,14 +146,14 @@ def main():
         log.error("Please set PRIVATE_TOKEN environment variable before using this tool! (see README.md)")
         return 1
 
-    if args.gitlab_base_url.endswith('/'):
-        args.gitlab_base_url = args.gitlab_base_url[:-1]
+    if args.gitlab_url.endswith('/'):
+        args.gitlab_url = args.gitlab_url[:-1]
 
-    api_base_url = args.gitlab_base_url + '/api/v4'
-    source_data_group_url = args.gitlab_base_url + '/' + dbnomics_source_data_namespace
-    json_data_group_url = args.gitlab_base_url + '/' + dbnomics_json_data_namespace
+    api_base_url = args.gitlab_url + '/api/v4'
+    source_data_group_url = args.gitlab_url + '/' + dbnomics_source_data_namespace
+    json_data_group_url = args.gitlab_url + '/' + dbnomics_json_data_namespace
 
-    gl = gitlab.Gitlab(args.gitlab_base_url, private_token=os.environ.get('PRIVATE_TOKEN'), api_version=4)
+    gl = gitlab.Gitlab(args.gitlab_url, private_token=os.environ.get('PRIVATE_TOKEN'), api_version=4)
     gl.auth()
     if args.debug_http:
         gl.enable_debug()

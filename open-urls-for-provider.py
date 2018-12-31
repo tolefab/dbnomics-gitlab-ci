@@ -30,11 +30,11 @@ import argparse
 import sys
 import webbrowser
 
-gitlab_base_url = 'https://git.nomics.world'
-dbnomics_group_url = gitlab_base_url + '/dbnomics'
-fetchers_group_url = gitlab_base_url + '/dbnomics-fetchers'
-source_data_group_url = gitlab_base_url + '/dbnomics-source-data'
-json_data_group_url = gitlab_base_url + '/dbnomics-json-data'
+gitlab_url = 'https://git.nomics.world'
+dbnomics_group_url = gitlab_url + '/dbnomics'
+fetchers_group_url = gitlab_url + '/dbnomics-fetchers'
+source_data_group_url = gitlab_url + '/dbnomics-source-data'
+json_data_group_url = gitlab_url + '/dbnomics-json-data'
 
 
 def main():
