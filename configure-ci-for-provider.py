@@ -34,6 +34,7 @@ import os
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 
 import gitlab
 import requests
@@ -58,20 +59,16 @@ def find(f, seq):
 
 def generate_ssh_key():
     with tempfile.NamedTemporaryFile(prefix='_' + args.provider_slug) as tmpfile:
-        ssh_key_file_path = tmpfile.name
-    print('Press "Enter" when passphrase is asked.')
-    subprocess.run(
-        [
-            'ssh-keygen', '-f', ssh_key_file_path, '-t', 'rsa', '-C',
-            args.provider_slug + '-fetcher@db.nomics.world', '-b', '4096',
-        ],
-        check=True,
-    )
-    with open('{}.pub'.format(ssh_key_file_path)) as ssh_key_file:
-        public_key = ssh_key_file.read()
-    with open(ssh_key_file_path) as ssh_key_file:
-        private_key = ssh_key_file.read()
-    return public_key, private_key
+        private_key_path = Path(tmpfile.name)
+    subprocess.run(['ssh-keygen', '-f', str(private_key_path), '-t', 'rsa',
+                    '-C', '{}-fetcher@db.nomics.world'.format(args.provider_slug), '-b', '4096', '-N', ''],
+                   check=True)
+    public_key_path = private_key_path.with_suffix('.pub')
+    public_key = public_key_path.read_text()
+    public_key_path.unlink()
+    private_key = private_key_path.read_text()
+    private_key_path.unlink()
+    return (public_key, private_key)
 
 
 # Pipeline schedules are not ready yet: https://github.com/python-gitlab/python-gitlab/pull/398
@@ -270,47 +267,18 @@ def main():
         fetcher_project.variables.create({"key": "SSH_PRIVATE_KEY", "value": private_key})
         log.debug('SSH_PRIVATE_KEY variable created')
 
-        # Add public key to source data repo.
-        # See bug https://gitlab.com/gitlab-org/gitlab-ce/issues/37458 – Deploy keys added via API do not trigger CI
-        # Workaround: create deploy key manually.
-        # deploy_key = create_deploy_key(source_data_project.id, {
-        #     'title': args.provider_slug,
-        #     'key': public_key,
-        #     'can_push': True,
-        # })
-        # log.debug('deploy key created in source repository')
-        source_data_repo_url = '/'.join([source_data_group_url, args.provider_slug + '-source-data'])
-        source_data_repository_settings_url = source_data_repo_url + '/settings/repository'
-        print(
-            '\n\n\nWARNING! Please create deploy key manually:\n'
-            '1. Copy-paste the public key below:\n',
-            public_key, '\n',
-            '2. Go to {}\n'.format(source_data_repository_settings_url),
-            '3. Give the deploy key this name: {!r}\n'.format(args.provider_slug + ' ' + GENERATED_OBJECTS_TAG),
-            '4. Check "Write access allowed"\n',
-            '5. Validate',
-        )
-        input("Press Enter when done...")
-        key = find(
-            lambda key: key.title == args.provider_slug + ' ' + GENERATED_OBJECTS_TAG,
-            source_data_project.keys.list(),
-        )
-        assert key is not None
-        log.debug('deploy key created and enabled for source repository')
+        # Create deploy key to source data repo.
+        key = source_data_project.keys.create({
+            'title': args.provider_slug + ' ' + GENERATED_OBJECTS_TAG,
+            'key': public_key,
+            'can_push': True,
+        })
+        log.debug('deploy key created for source repository')
 
-        # Enable public key in JSON data repo.
+        # Enable deploy key for JSON data repo.
         json_data_project.keys.enable(key.id)
+        json_data_project.keys.update(key.id, {'can_push': True})
         log.debug('deploy key enabled for JSON repository')
-
-        json_data_repo_url = '/'.join([json_data_group_url, args.provider_slug + '-json-data'])
-        json_data_repository_deploy_key_url = '{}/deploy_keys/{}/edit'.format(json_data_repo_url, key.id)
-        print(
-            '\n\n\nWARNING! Please add write access to the deploy key manually:\n'
-            '1. Go to {}\n'.format(json_data_repository_deploy_key_url),
-            '2. Check "Write access allowed"\n',
-            '3. Validate',
-        )
-        input("Press Enter when done...")
 
         # Create a hook in the JSON data repo, to trigger the Solr indexation job.
         trigger_url = api_base_url + '/projects/{}/ref/master/trigger/pipeline?token={}&variables[PROVIDER_SLUG]={}'.format(
