@@ -21,7 +21,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-"""Trigger job for a provider (download or convert).
+"""Trigger a job for a specific provider.
 
 See https://git.nomics.world/dbnomics-fetchers/documentation/wikis/Setup-CI-jobs
 """
