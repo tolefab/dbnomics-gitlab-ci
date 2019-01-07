@@ -44,6 +44,7 @@ log = logging.getLogger(__name__)
 dbnomics_fetchers_namespace = "dbnomics-fetchers"
 dbnomics_source_data_namespace = "dbnomics-source-data"
 dbnomics_json_data_namespace = "dbnomics-json-data"
+default_data_model_project_id = 40  # Project ID of repo https://git.nomics.world/dbnomics/dbnomics-data-model/
 default_importer_project_id = 42  # Project ID of repo https://git.nomics.world/dbnomics/dbnomics-importer/
 GENERATED_OBJECTS_TAG = 'CI jobs'
 
@@ -124,8 +125,10 @@ def main():
     parser.add_argument('provider_slug', help='slug of the provider to configure')
     parser.add_argument('--debug-http', action='store_true', help='display http.client debug messages')
     parser.add_argument('--gitlab-url', default='https://git.nomics.world', help='base URL of GitLab instance')
-    parser.add_argument('--importer-project-id', type=int, default=default_importer_project_id,
+    parser.add_argument('--data-model-project-id', type=int, default=default_data_model_project_id,
                         help='ID of the dbnomics-importer project')
+    parser.add_argument('--importer-project-id', type=int, default=default_importer_project_id,
+                        help='ID of the dbnomics-data-model project')
     parser.add_argument('--no-delete', action='store_true', help='disable deletion of existing items - for debugging')
     parser.add_argument('--no-create', action='store_true', help='disable creation of items - for debugging')
     parser.add_argument('--purge', action='store_true', help='delete all triggers, hooks and deploy keys')
@@ -166,8 +169,16 @@ def main():
     log.debug('source data project: {}'.format(source_data_project))
     json_data_project = gl.projects.get("{}/{}-json-data".format(dbnomics_json_data_namespace, args.provider_slug))
     log.debug('JSON data project: {}'.format(json_data_project))
+    data_model_project = gl.projects.get(args.data_model_project_id)
+    log.debug('data model project: {}'.format(data_model_project))
     importer_project = gl.projects.get(args.importer_project_id)
     log.debug('importer project: {}'.format(importer_project))
+
+    # Get data model repo trigger.
+    data_model_triggers = data_model_project.triggers.list()
+    assert len(data_model_triggers) == 1, data_model_triggers
+    data_model_trigger = data_model_triggers[0]
+    log.debug('importer repo trigger fetched')
 
     # Get importer repo trigger.
     importer_triggers = importer_project.triggers.list()
@@ -221,9 +232,11 @@ def main():
             hook.delete()
             log.debug('source repo hook deleted')
 
-        # Delete hooks of the JSON data repo, that trigger the Solr indexation job (keep eventual other hooks).
+        # Delete hooks of the JSON data repo.
         hooks = filter(
-            lambda hook: args.purge or '/projects/{}/'.format(importer_project.id) in hook.url,
+            lambda hook: (args.purge
+                          or '/projects/{}/'.format(data_model_project.id) in hook.url
+                          or '/projects/{}/'.format(importer_project.id) in hook.url),
             json_data_project.hooks.list(),
         )
         for hook in hooks:
@@ -304,6 +317,12 @@ def main():
             args.importer_project_id, importer_trigger.token, args.provider_slug)
         hook = json_data_project.hooks.create({"url": trigger_url})
         log.debug('created hook for indexation job')
+
+        # Create a hook in the JSON data repo, to trigger the validation job.
+        trigger_url = api_base_url + '/projects/{}/ref/master/trigger/pipeline?token={}&variables[PROVIDER_SLUG]={}'.format(
+            args.data_model_project_id, data_model_trigger.token, args.provider_slug)
+        hook = json_data_project.hooks.create({"url": trigger_url})
+        log.debug('created hook for validation job')
 
         # Create pipeline schedule in the fetcher repo.
         # "dummy" provider should not be scheduled.
