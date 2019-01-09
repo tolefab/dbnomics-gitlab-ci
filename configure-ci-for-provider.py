@@ -71,51 +71,6 @@ def generate_ssh_key():
     return (public_key, private_key)
 
 
-# Pipeline schedules are not ready yet: https://github.com/python-gitlab/python-gitlab/pull/398
-
-def create_pipeline_schedule(api_base_url, project_id, description, schedule_time):
-    hour, minute = schedule_time
-    response = requests.post(
-        api_base_url + '/projects/{}/pipeline_schedules'.format(project_id),
-        headers={'PRIVATE-TOKEN': os.environ.get('PRIVATE_TOKEN')},
-        json={
-            'active': True,
-            'description': description,
-            'ref': 'master',
-            'cron': '{} {} * * *'.format(minute, hour),
-        },
-    )
-    response.raise_for_status()
-    return response.json()
-
-
-def create_pipeline_schedule_variable(api_base_url, project_id, pipeline_schedule_id, key, value):
-    response = requests.post(
-        api_base_url + '/projects/{}/pipeline_schedules/{}/variables'.format(project_id, pipeline_schedule_id),
-        headers={'PRIVATE-TOKEN': os.environ.get('PRIVATE_TOKEN')},
-        json={'key': key, 'value': value},
-    )
-    response.raise_for_status()
-    return response.json()
-
-
-def delete_pipeline_schedule(api_base_url, project_id, pipeline_schedule_id):
-    response = requests.delete(
-        api_base_url + '/projects/{}/pipeline_schedules/{}'.format(project_id, pipeline_schedule_id),
-        headers={'PRIVATE-TOKEN': os.environ.get('PRIVATE_TOKEN')},
-    )
-    response.raise_for_status()
-
-
-def get_pipeline_schedules(api_base_url, project_id):
-    response = requests.get(
-        api_base_url + '/projects/{}/pipeline_schedules'.format(project_id),
-        headers={'PRIVATE-TOKEN': os.environ.get('PRIVATE_TOKEN')},
-    )
-    response.raise_for_status()
-    return response.json()
-
-
 def main():
     global args
     parser = argparse.ArgumentParser()
@@ -242,13 +197,13 @@ def main():
 
         # Delete pipeline schedule of the fetcher repo.
         pipeline_schedules = filter(
-            lambda pipeline_schedule: args.purge or pipeline_schedule["description"] ==
+            lambda pipeline_schedule: args.purge or pipeline_schedule.description ==
             args.provider_slug + ' ' + GENERATED_OBJECTS_TAG,
-            get_pipeline_schedules(api_base_url, fetcher_project.id),
+            fetcher_project.pipelineschedules.list()
         )
         for pipeline_schedule in pipeline_schedules:
-            delete_pipeline_schedule(api_base_url, fetcher_project.id, pipeline_schedule["id"])
-            log.debug('Fetcher repo pipeline schedule deleted')
+            pipeline_schedule.delete()
+            log.debug('pipeline schedule of fetcher repo deleted')
 
     if not args.no_create:
         public_key, private_key = generate_ssh_key()
@@ -295,11 +250,14 @@ def main():
         # Create pipeline schedule in the fetcher repo.
         # "dummy" provider should not be scheduled.
         if args.provider_slug != 'dummy':
-            pipeline_schedule = create_pipeline_schedule(api_base_url, fetcher_project.id,
-                                                         description=args.provider_slug + ' ' + GENERATED_OBJECTS_TAG,
-                                                         schedule_time=args.schedule_time)
-            create_pipeline_schedule_variable(api_base_url, fetcher_project.id, pipeline_schedule["id"],
-                                              key='JOB', value='download')
+            hour, minute = args.schedule_time
+            pipeline_schedule = fetcher_project.pipelineschedules.create({
+                'active': True,
+                'description': args.provider_slug + ' ' + GENERATED_OBJECTS_TAG,
+                'ref': 'master',
+                'cron': '{} {} * * *'.format(minute, hour),
+            })
+            pipeline_schedule.variables.create({"key": "JOB", "value": "download"})
             log.debug('created pipeline schedule')
 
     return 0
