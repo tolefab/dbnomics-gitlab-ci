@@ -78,9 +78,9 @@ def main():
     parser.add_argument('--debug-http', action='store_true', help='display http.client debug messages')
     parser.add_argument('--gitlab-url', default='https://git.nomics.world', help='base URL of GitLab instance')
     parser.add_argument('--data-model-project-id', type=int, default=default_data_model_project_id,
-                        help='ID of the dbnomics-importer project')
-    parser.add_argument('--importer-project-id', type=int, default=default_importer_project_id,
                         help='ID of the dbnomics-data-model project')
+    parser.add_argument('--importer-project-id', type=int, default=default_importer_project_id,
+                        help='ID of the dbnomics-importer project')
     parser.add_argument('--no-delete', action='store_true', help='disable deletion of existing items - for debugging')
     parser.add_argument('--no-create', action='store_true', help='disable creation of items - for debugging')
     parser.add_argument('--purge', action='store_true', help='delete all triggers, hooks and deploy keys')
