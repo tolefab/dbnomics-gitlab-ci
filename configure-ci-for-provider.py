@@ -101,6 +101,9 @@ def main():
         log.error("Please set PRIVATE_TOKEN environment variable before using this tool! (see README.md)")
         return 1
 
+    if args.provider_slug != args.provider_slug.lower():
+        parser.error("provider_slug must be lowercase.")
+
     if args.gitlab_url.endswith('/'):
         args.gitlab_url = args.gitlab_url[:-1]
 
