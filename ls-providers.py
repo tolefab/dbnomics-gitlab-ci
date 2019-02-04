@@ -53,14 +53,14 @@ def iter_scheduled_fetcher_projects(gl, fetcher_projects):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--gitlab-url', default='https://git.nomics.world', help='base URL of GitLab instance')
-    parser.add_argument('--only-scheduled', action='store_true', help='display providers with an active scheduler')
+    parser.add_argument('--all', action='store_true', help='display all providers, not only the scheduled ones')
     args = parser.parse_args()
 
     gl = gitlab.Gitlab(url=args.gitlab_url, private_token=os.environ.get('PRIVATE_TOKEN'), api_version=4)
     dbnomics_fetchers_group = gl.groups.get('dbnomics-fetchers')
 
     fetcher_projects = dbnomics_fetchers_group.projects.list(order_by="name", sort="asc", all=True)
-    if args.only_scheduled:
+    if not args.all:
         fetcher_projects = iter_scheduled_fetcher_projects(gl, fetcher_projects)
 
     for fetcher_project in fetcher_projects:
