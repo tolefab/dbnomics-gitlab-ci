@@ -218,7 +218,11 @@ def main():
         # Create a hook in the source data repo, to trigger the convert job.
         trigger_url = api_base_url + '/projects/{}/ref/master/trigger/pipeline?token={}&variables[JOB]=convert'.format(
             fetcher_project.id, fetcher_trigger.token)
-        source_data_project.hooks.create({"url": trigger_url})
+        source_data_project.hooks.create({
+            "url": trigger_url,
+            'push_events': 1,
+            'push_events_branch_filter': 'master',
+        })
         log.debug('created hook for convert job')
 
         # Create or update SSH_PRIVATE_KEY secret variable.
@@ -241,13 +245,21 @@ def main():
         # Create a hook in the JSON data repo, to trigger the Solr indexation job.
         trigger_url = api_base_url + '/projects/{}/ref/master/trigger/pipeline?token={}&variables[PROVIDER_SLUG]={}'.format(
             args.importer_project_id, importer_trigger.token, args.provider_slug)
-        hook = json_data_project.hooks.create({"url": trigger_url})
+        hook = json_data_project.hooks.create({
+            "url": trigger_url,
+            'push_events': 1,
+            'push_events_branch_filter': 'master',
+        })
         log.debug('created hook for indexation job')
 
         # Create a hook in the JSON data repo, to trigger the validation job.
         trigger_url = api_base_url + '/projects/{}/ref/master/trigger/pipeline?token={}&variables[PROVIDER_SLUG]={}'.format(
             args.data_model_project_id, data_model_trigger.token, args.provider_slug)
-        hook = json_data_project.hooks.create({"url": trigger_url})
+        hook = json_data_project.hooks.create({
+            "url": trigger_url,
+            'push_events': 1,
+            'push_events_branch_filter': 'master',
+        })
         log.debug('created hook for validation job')
 
         # Create pipeline schedule in the fetcher repo.
