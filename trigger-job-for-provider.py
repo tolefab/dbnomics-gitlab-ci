@@ -43,6 +43,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('job_name', choices=['download', 'convert', 'index', 'validate'], help='job name to trigger')
     parser.add_argument('provider_slug', help='slug of the provider to configure')
+    parser.add_argument('--full', action='store_true', help='only for "index" action: index all datasets')
     parser.add_argument('--gitlab-url', default='https://git.nomics.world', help='base URL of GitLab instance')
     parser.add_argument('--ref', default='master', help='ref of fetcher repo (branch name) on which to start the job')
     parser.add_argument('-v', '--verbose', action='store_true', help='display logging messages from debug level')
@@ -61,6 +62,9 @@ def main():
 
     if args.provider_slug != args.provider_slug.lower():
         parser.error("provider_slug must be lowercase.")
+
+    if args.full and args.job_name != "index":
+        parser.error("--full is only allowed with \"index\" job.")
 
     if args.gitlab_url.endswith('/'):
         args.gitlab_url = args.gitlab_url[:-1]
@@ -127,7 +131,10 @@ def main():
         trigger = triggers[0]
         log.debug('trigger of importer repo fetched')
 
-        pipeline_variables = {'PROVIDER_SLUG': args.provider_slug}
+        pipeline_variables = {
+            'FULL': 1 if args.full else 0,
+            'PROVIDER_SLUG': args.provider_slug,
+        }
         importer_project.trigger_pipeline(args.ref, trigger.token, pipeline_variables)
         log.debug('pipeline triggered for ref {!r} with variables {!r}'.format(args.ref, pipeline_variables))
 
