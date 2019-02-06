@@ -23,7 +23,7 @@
 
 """Configure a provider in DBnomics GitLab-CI.
 
-See https://git.nomics.world/dbnomics-fetchers/documentation/wikis/Setup-CI-jobs
+See https://git.nomics.world/dbnomics-fetchers/documentation/wikis/ci-jobs
 """
 
 
