@@ -21,7 +21,13 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-"""Configure a provider in DBnomics GitLab-CI.
+"""Configure a provider in DBnomics GitLab-CI:
+- create trigger in the fetcher repo
+- create a hook in the source data repo, to trigger the convert job
+- generate private key and enable them for source and json data repos
+- create a hook in the JSON data repo to trigger the Solr indexation job
+- create a hook in the JSON data repo, to trigger the validation job
+- create pipeline schedule in the fetcher repo
 
 See https://git.nomics.world/dbnomics-fetchers/documentation/wikis/ci-jobs
 """
