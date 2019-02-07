@@ -47,7 +47,14 @@ def main():
     parser.add_argument('--gitlab-url', default='https://git.nomics.world', help='base URL of GitLab instance')
     parser.add_argument('--ref', default='master', help='ref of fetcher repo (branch name) on which to start the job')
     parser.add_argument('-v', '--verbose', action='store_true', help='display logging messages from debug level')
-    args = parser.parse_args()
+    remaining_args = []
+    if '--' in sys.argv:
+        # Only parse arguments before the '--' separator
+        args = parser.parse_args(sys.argv[1:sys.argv.index('--')])
+        # Arguments after '--' are saved in remaining_args variable
+        remaining_args = sys.argv[sys.argv.index('--') + 1:]
+    else:
+        args = parser.parse_args()
 
     logging.basicConfig(
         format="%(levelname)s:%(name)s:%(asctime)s:%(message)s",
@@ -90,6 +97,11 @@ def main():
         log.debug('trigger of fetcher repo fetched')
 
         pipeline_variables = {'JOB': args.job_name}
+        if remaining_args:
+            pipeline_variables['SCRIPT_ARGS'] = " ".join(
+                '"{}"'.format(arg) if ' ' in arg else arg
+                for arg in remaining_args
+            )
         fetcher_project.trigger_pipeline(args.ref, trigger.token, pipeline_variables)
         log.debug('pipeline triggered for ref {!r} with variables {!r}'.format(args.ref, pipeline_variables))
 
