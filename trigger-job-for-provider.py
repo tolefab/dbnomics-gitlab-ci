@@ -98,7 +98,7 @@ def main():
 
         pipeline_variables = {'JOB': args.job_name}
         if remaining_args:
-            pipeline_variables['SCRIPT_ARGS'] = " ".join(
+            pipeline_variables['JOB_ARGS'] = " ".join(
                 '"{}"'.format(arg) if ' ' in arg else arg
                 for arg in remaining_args
             )
