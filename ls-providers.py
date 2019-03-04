@@ -34,6 +34,7 @@ import sys
 from pathlib import Path
 
 import gitlab
+from dotenv import load_dotenv
 
 GENERATED_OBJECTS_TAG = 'CI jobs'
 
@@ -56,7 +57,13 @@ def main():
     parser.add_argument('--all', action='store_true', help='display all providers, not only the scheduled ones')
     args = parser.parse_args()
 
-    gl = gitlab.Gitlab(url=args.gitlab_url, private_token=os.environ.get('PRIVATE_TOKEN'), api_version=4)
+    load_dotenv()
+
+    if not os.getenv('PRIVATE_TOKEN'):
+        log.error("Please set PRIVATE_TOKEN environment variable before using this tool! (see README.md)")
+        return 1
+
+    gl = gitlab.Gitlab(url=args.gitlab_url, private_token=os.getenv('PRIVATE_TOKEN'), api_version=4)
     dbnomics_fetchers_group = gl.groups.get('dbnomics-fetchers')
 
     fetcher_projects = dbnomics_fetchers_group.projects.list(order_by="name", sort="asc", all=True)

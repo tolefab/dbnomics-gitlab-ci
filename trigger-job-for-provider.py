@@ -32,6 +32,7 @@ import os
 import sys
 
 import gitlab
+from dotenv import load_dotenv
 
 dbnomics_namespace = "dbnomics"
 dbnomics_fetchers_namespace = "dbnomics-fetchers"
@@ -63,7 +64,9 @@ def main():
     )
     logging.getLogger("urllib3").setLevel(logging.WARNING)
 
-    if not os.environ.get('PRIVATE_TOKEN'):
+    load_dotenv()
+
+    if not os.getenv('PRIVATE_TOKEN'):
         log.error("Please set PRIVATE_TOKEN environment variable before using this tool! (see README.md)")
         return 1
 
@@ -76,7 +79,7 @@ def main():
     if args.gitlab_url.endswith('/'):
         args.gitlab_url = args.gitlab_url[:-1]
 
-    gl = gitlab.Gitlab(args.gitlab_url, private_token=os.environ.get('PRIVATE_TOKEN'), api_version=4)
+    gl = gitlab.Gitlab(args.gitlab_url, private_token=os.getenv('PRIVATE_TOKEN'), api_version=4)
     gl.auth()
 
     dbnomics_group_url = args.gitlab_url + '/' + dbnomics_namespace

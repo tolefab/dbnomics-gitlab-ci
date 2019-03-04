@@ -44,6 +44,7 @@ from pathlib import Path
 
 import gitlab
 import requests
+from dotenv import load_dotenv
 
 args = None
 log = logging.getLogger(__name__)
@@ -103,7 +104,9 @@ def main():
     if args.debug_http:
         http.client.HTTPConnection.debuglevel = 1
 
-    if not os.environ.get('PRIVATE_TOKEN'):
+    load_dotenv()
+
+    if not os.getenv('PRIVATE_TOKEN'):
         log.error("Please set PRIVATE_TOKEN environment variable before using this tool! (see README.md)")
         return 1
 
@@ -117,7 +120,7 @@ def main():
     source_data_group_url = args.gitlab_url + '/' + dbnomics_source_data_namespace
     json_data_group_url = args.gitlab_url + '/' + dbnomics_json_data_namespace
 
-    gl = gitlab.Gitlab(args.gitlab_url, private_token=os.environ.get('PRIVATE_TOKEN'), api_version=4)
+    gl = gitlab.Gitlab(args.gitlab_url, private_token=os.getenv('PRIVATE_TOKEN'), api_version=4)
     gl.auth()
     if args.debug_http:
         gl.enable_debug()

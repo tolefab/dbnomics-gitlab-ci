@@ -35,6 +35,7 @@ import os
 import sys
 
 import gitlab
+from dotenv import load_dotenv
 from gitlab.v4.objects import VISIBILITY_PUBLIC
 
 args = None
@@ -60,17 +61,19 @@ def main():
     if args.debug_http:
         http.client.HTTPConnection.debuglevel = 1
 
+    load_dotenv()
+
     if args.provider_slug != args.provider_slug.lower():
         parser.error("provider_slug must be lowercase.")
 
-    if not os.environ.get('PRIVATE_TOKEN'):
+    if not os.getenv('PRIVATE_TOKEN'):
         log.error("Please set PRIVATE_TOKEN environment variable before using this tool! (see README.md)")
         return 1
 
     if args.gitlab_url.endswith('/'):
         args.gitlab_url = args.gitlab_url[:-1]
 
-    gl = gitlab.Gitlab(args.gitlab_url, private_token=os.environ.get('PRIVATE_TOKEN'), api_version=4)
+    gl = gitlab.Gitlab(args.gitlab_url, private_token=os.getenv('PRIVATE_TOKEN'), api_version=4)
     gl.auth()
 
     # Create fetcher repo

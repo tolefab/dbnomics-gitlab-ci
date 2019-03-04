@@ -7,9 +7,28 @@ Unfortunately, Docker Hub is only compatible with GitHub for now, and DBnomics i
 
 The Docker image is referenced in `.gitlab-ci.yml` files of each fetcher, with the line `image: dbnomics/dbnomics-gitlab-ci:latest`.
 
-## Obtain the private token
+## Configuration
 
-The private token is stored in a private Wiki page: https://git.nomics.world/cepremap-private/servers-and-services/blob/master/dbnomics-gitlab-private-tokens.md
+### Requirements
+
+Install the Python requirements.
+
+```sh
+pip install -r requirements.txt
+```
+
+### Private token
+
+The scripts of this repository use GitLab API in a way that requires authentication.
+They read a "private token" from an environment variable which can be also configured via a `.env` file.
+
+First, copy the private token from this private file: https://git.nomics.world/cepremap-private/servers-and-services/blob/master/dbnomics-gitlab-private-tokens.md
+
+If you don't have access, ask DBnomics team.
+
+Copy the `.env.example` file to `.env` and replace the value of `PRIVATE_TOKEN`.
+
+Now you can use the scripts of this repository.
 
 ## Configure CI for a provider
 
@@ -20,7 +39,7 @@ The private token is stored in a private Wiki page: https://git.nomics.world/cep
 - Commit `.gitlab-ci.yml` and push.
 - Run `configure-ci-for-provider.py` and follow the instructions.
     ```sh
-    PRIVATE_TOKEN=<hidden> ./configure-ci-for-provider.py --purge -v <provider_slug>
+    ./configure-ci-for-provider.py --purge -v <provider_slug>
     ```
 - To test averything is okay, trigger a job using `trigger-job-for-provider.py` (see below).
 
@@ -29,7 +48,7 @@ The private token is stored in a private Wiki page: https://git.nomics.world/cep
 This script runs a job in GitLab-CI using the configured webhooks. The triggered job can be followed by clicking on the link printed by the script.
 
 ```sh
-PRIVATE_TOKEN=<hidden> ./trigger-job-for-provider.py <download|convert|index> <provider_slug>
+./trigger-job-for-provider.py <download|convert|index> <provider_slug>
 ```
 
 ## Other scripts
