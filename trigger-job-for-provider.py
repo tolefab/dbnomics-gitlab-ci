@@ -105,8 +105,11 @@ def main():
                 '"{}"'.format(arg) if ' ' in arg else arg
                 for arg in remaining_args
             )
-        fetcher_project.trigger_pipeline(args.ref, trigger.token, pipeline_variables)
-        log.debug('pipeline triggered for ref {!r} with variables {!r}'.format(args.ref, pipeline_variables))
+        log.debug('Triggering pipeline for ref {!r} with variables {!r}'.format(args.ref, pipeline_variables))
+        try:
+            fetcher_project.trigger_pipeline(args.ref, trigger.token, pipeline_variables)
+        except gitlab.GitlabCreateError:
+            log.exception("Hint: check that your PRIVATE_TOKEN env variable is correct !")
 
         fetcher_jobs_url = fetcher_repo_url + '/-/jobs'
         print('Check job: {}'.format(fetcher_jobs_url))
